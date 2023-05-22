@@ -1,0 +1,331 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-05-18 10:31:45.213227",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "segment",
+  "category",
+  "script",
+  "currency",
+  "mtm_required",
+  "market_price",
+  "column_break_jpb1w",
+  "status",
+  "date_of_investment",
+  "company",
+  "entry_section_section",
+  "qty",
+  "entry_price",
+  "holding_account",
+  "jv_of_entry",
+  "column_break_818hx",
+  "entry_amount",
+  "total_cost_of_ownership",
+  "entry_charges",
+  "funds_debited_from",
+  "cancel_entry_jv",
+  "exit_section_section",
+  "exit_price",
+  "exit_rate",
+  "exit_qty",
+  "jv_of_exit",
+  "column_break_1cq96",
+  "exit_date",
+  "net_exit_amount",
+  "bank_account",
+  "add_cancellation_details",
+  "investment_portfolio_cancellation_section",
+  "investment_portfolio_cancellation",
+  "total_cancelled",
+  "avg_exit_rate",
+  "account_section_section",
+  "funds_credited_to",
+  "investment_charges_account",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "segment",
+   "fieldtype": "Link",
+   "label": "Segment",
+   "options": "Investment Portfolio Segment"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "label": "Category",
+   "options": "Category"
+  },
+  {
+   "fieldname": "date_of_investment",
+   "fieldtype": "Date",
+   "label": "Date of Investment",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty",
+   "precision": "4",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "company.default_currency",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "mtm_required",
+   "fieldtype": "Check",
+   "label": "MTM Required "
+  },
+  {
+   "fieldname": "market_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Market Price",
+   "options": "currency",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "Holding\nPartially Exited\nExited"
+  },
+  {
+   "fieldname": "entry_section_section",
+   "fieldtype": "Section Break",
+   "label": "Entry Section"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "entry_price",
+   "fieldtype": "Currency",
+   "label": "Entry Price",
+   "options": "currency",
+   "precision": "4",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "entry_amount",
+   "fieldtype": "Float",
+   "label": "Entry Amount"
+  },
+  {
+   "depends_on": "eval:doc.docstatus==1;",
+   "fieldname": "exit_section_section",
+   "fieldtype": "Section Break",
+   "label": "Exit Section"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_price",
+   "fieldtype": "Currency",
+   "label": "Exit Price",
+   "options": "currency"
+  },
+  {
+   "fieldname": "account_section_section",
+   "fieldtype": "Section Break",
+   "label": "Account Section"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "holding_account",
+   "fieldtype": "Link",
+   "label": "Holding Account",
+   "options": "Account"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "funds_debited_from",
+   "fieldtype": "Link",
+   "label": "Funds Debited From",
+   "options": "Account"
+  },
+  {
+   "fieldname": "jv_of_entry",
+   "fieldtype": "Link",
+   "label": "JV of Entry",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "jv_of_exit",
+   "fieldtype": "Link",
+   "label": "JV of Exit",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "funds_credited_to",
+   "fieldtype": "Link",
+   "label": "Funds Credited To",
+   "options": "Account"
+  },
+  {
+   "fieldname": "column_break_jpb1w",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "investment_portfolio_cancellation",
+   "fieldtype": "Table",
+   "label": "Investment Portfolio Cancellation",
+   "options": "Investment Portfolio Cancellation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_818hx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Investment Portfolio",
+   "print_hide": 1
+  },
+  {
+   "depends_on": "eval:doc.docstatus==1;\neval:doc.qty!=doc.total_cancelled;\n",
+   "fieldname": "add_cancellation_details",
+   "fieldtype": "Button",
+   "label": "Add Cancellation Details",
+   "options": "add_cancellation_details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "investment_portfolio_cancellation_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_cost_of_ownership",
+   "fieldtype": "Float",
+   "label": "Total Cost Of Ownership"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "entry_charges",
+   "fieldtype": "Float",
+   "label": "Entry Charges",
+   "read_only_depends_on": "eval:doc.total_cost_of_ownership"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "net_exit_amount",
+   "fieldtype": "Float",
+   "label": "Net Exit Amount"
+  },
+  {
+   "fieldname": "column_break_1cq96",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus==1",
+   "fieldname": "total_cancelled",
+   "fieldtype": "Float",
+   "label": "Total Cancelled Qty",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus==1",
+   "fieldname": "avg_exit_rate",
+   "fieldtype": "Float",
+   "label": "Avg Exit Rate",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_date",
+   "fieldtype": "Date",
+   "label": "Exit Date"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_rate",
+   "fieldtype": "Float",
+   "label": "Exit Rate"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_qty",
+   "fieldtype": "Float",
+   "label": "Exit Qty"
+  },
+  {
+   "fieldname": "script",
+   "fieldtype": "Data",
+   "label": "Script "
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "investment_charges_account",
+   "fieldtype": "Link",
+   "label": "Investment Charges Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "cancel_entry_jv",
+   "fieldtype": "Button",
+   "label": "Cancel Entry JV",
+   "options": "cancel_entry_jv"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-05-22 14:27:38.182732",
+ "modified_by": "Administrator",
+ "module": "Portfolio",
+ "name": "Investment Portfolio",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
