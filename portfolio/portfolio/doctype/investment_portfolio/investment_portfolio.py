@@ -4,37 +4,89 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import flt, date_diff, nowdate, get_url_to_form
+from frappe.utils import flt, date_diff, nowdate, get_url_to_form,flt
 
 class InvestmentPortfolio(Document):
 	
 	def validate(self):
 		self.calculate_entry_amount()
+		self.calculate_pending_qty()
+		
+	def on_update_after_submit(self):
+		self.calculate_pending_qty()
+		self.set_status()
 
+	def on_cancel(self):
+		self.cancel_jv()
+	
+
+	def on_update(self):
+		self.set_status()
+
+	def set_status(self):
+		if self.pending_qty==self.qty:
+			self.status="Holding"
+		if self.qty!=self.pending_qty:
+			self.status="Partially Exited"
+		if self.pending_qty == 0:
+			self.status="Exited"
+		
 	def on_submit(self):
-		self.create_row_entry_jv()
-		self.db_update()
-
-	
-	
-	
+		self.create_row_entry_jv()	
+		
 	def calculate_entry_amount(self):
 		self.entry_amount=self.qty*self.entry_price
+	
+	def calculate_exit_amount(self):
+		self.exit_amount=self.exit_price*self.exit_qty
 		
 	def validate_exit_date(self):
 		if self.date_of_investment > self.exit_date:
-			frappe.throw("Exit Date Cannot be Greater than Investment Date")
+			frappe.throw("Exit Date Cannot be Greater than Investment Date")	
 	
-	
-	
-	@frappe.whitelist()
-	def add_cancellation_details(self):
-		self.add_cancellation()
-		self.db_update()
-		self.calculate_cancellation()
+	def create_row_exit_jv(self):
+		if not self.bank_account:
+			frappe.throw("Bank Account is compulsory")
+		jv = frappe.new_doc("Journal Entry")
+		jv.voucher_type = "Journal Entry"
+		jv.naming_series = "JV-.fiscal.-"
+		jv.posting_date = self.exit_date
+		net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
+		if not self.company:
+			self.db_set('company', frappe.defaults.get_global_default('company'))
+
+		jv.company = self.company
+
 		
-	
-	def create_row_entry_jv(self):
+		jv.append('accounts', {
+			'account': self.bank_account,
+			'debit_in_account_currency': self.net_exit_amount,
+		})
+
+		jv.append('accounts', {
+			'account': self.holding_account,
+			'credit_in_account_currency': (self.exit_qty*self.entry_price)
+		})
+		jv.append('accounts', {
+			'account': self.funds_credited_to,
+			'credit_in_account_currency': net
+		})
+
+		jv.cheque_no = self.name
+		jv.cheque_date = self.exit_date
+		
+
+		try:
+			jv.save()
+			jv.submit()
+			self.jv_of_exit = jv.name
+			url = get_url_to_form("Journal Entry", jv.name)
+			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
+			return jv.name
+		except Exception as e:
+			frappe.throw(_(str(e)))	
+
+	def create_row_entry_jv(self):		
 		jv = frappe.new_doc("Journal Entry")
 		jv.voucher_type = "Journal Entry"
 		jv.naming_series = "JV-.fiscal.-"
@@ -47,7 +99,7 @@ class InvestmentPortfolio(Document):
 
 		
 		jv.append('accounts', {
-			'account': self.funds_credited_to,
+			'account': self.funds_debited_from,
 			'credit_in_account_currency': self.total_cost_of_ownership,
 		})
 
@@ -65,184 +117,45 @@ class InvestmentPortfolio(Document):
 
 		try:
 			jv.save()
+			jv.submit()
+			self.db_set("jv_of_entry" , jv.name)
 		except Exception as e:
 			frappe.throw(_(str(e)))
 		else:
-			jv.submit()
-			self.jv_of_entry = jv.name
-			url = get_url_to_form("Journal Entry", jv.name)
-			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
-	
-
-	
-		
-	@frappe.whitelist()
-	def cancel_entry_jv(self):
-		jv=frappe.get_doc('Journal Entry',self.jv_of_entry)
-		frappe.db.set_value("Investment Portfolio",self.name,"jv_of_entry","")
-		self.jv_of_entry=''
-		jv.cancel()
-		self.db_update()
-		url = get_url_to_form("Journal Entry", jv.name)
-		frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been cancelled.".format(url=url, doc=frappe.bold(jv.name))))
-		self.qty=0.0
-		self.entry_price=0.0
-		self.entry_amount=0.0
-		self.total_cost_of_ownership=0.0
-
-		
-		
-	
-
-	def create_jv(self, row):
-		doc = ''
-		for d in self.investment_portfolio_cancellation:
-			if d.name == row:
-				doc = d
-				break
-
-		if not doc.bank_account:
-			frappe.throw(_("Please add bank account in row: {}".format(doc.idx)))
-
-		doc.rate_diff = flt(rate_diff)
-		doc.profit_or_loss = flt(rate_diff) * flt(doc.qty)
-		doc.db_update()
-
-		self.create_row_jv(doc)
-		self.db_update()
-		self.submit()
-
-	# def get_cancel_jv_number(self,row):
-	# 	for d in row:
-	# 	   print(d)
-	# 	pass
-
-	
-	@frappe.whitelist()
-	def cancel_jv(self, row):
-		print(row)
-		to_remove = []
-
-		for d in self.investment_portfolio_cancellation:
-			if d.name == row and d.journal_entry:
-				jv = frappe.get_doc("Journal Entry", d.journal_entry)
-				frappe.msgprint(str(jv))
-				d.journal_entry = ''
-				d.db_update()
-				self.jv_of_exit=''
-				frappe.db.set_value("Investment Portfolio",self.name,"jv_of_exit","")
-				jv.cancel()
-				url = get_url_to_form("Journal Entry", jv.name)
-				frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been cancelled.".format(url=url, doc=frappe.bold(jv.name))))
-				
-				to_remove.append(d)
-
-		[self.remove(d) for d in to_remove]
-		self.calculate_cancellation()
-		
-		self.db_update()
-		self.submit()
-
-		
-	
-	def add_cancellation(self):
-		rate_diff=flt(self.exit_price)-flt(self.entry_price)
-		row = frappe._dict({
-			'date': self.exit_date,
-			'rate': self.exit_rate,
-			'qty': self.exit_qty,
-			'exit_amount': flt(self.exit_rate) * flt(self.exit_qty),
-			'exit_charges_calculated':flt(self.net_exit_amount),
-			'rate_diff': flt(rate_diff),
-			'profit_or_loss': flt(rate_diff) * flt(self.exit_qty),
-			'bank_account': self.bank_account,
-		})
-		row.exit_charges_calculated-=row.exit_amount
-		if abs(row.get('profit_or_loss')):
-			self.create_row_jv(row)
-			self.append('investment_portfolio_cancellation', row)
-			self.db_update()
-			self.submit()
 			
-		
-		else:
-			frappe.msgprint("Journal Entry was not created because there is no profit or loss")
-		
-		self.exit_price=0.0
-		self.net_exit_amount=0.0
-		self.exit_date = ''
-		self.exit_rate = 0.0
-		self.exit_qty = 0.0
-		self.bank_account = ''
-		self.entry_charges=0.0
-	
-	def create_row_jv(self, row):
-		jv = frappe.new_doc("Journal Entry")
-		jv.voucher_type = "Journal Entry"
-		jv.naming_series = "JV-.fiscal.-"
-		jv.posting_date = self.exit_date
-		
-		if not self.company:
-			self.db_set('company', frappe.defaults.get_global_default('company'))
-
-		jv.company = self.company
-
-		exchange_gain_loss_account = frappe.db.get_value("Company", self.company, 'exchange_gain_loss_account')
-
-		if row.profit_or_loss > 0:
-			credit_account = exchange_gain_loss_account
-			debit_account = row.bank_account
-
-		else:
-			credit_account = row.bank_account
-			debit_account = exchange_gain_loss_account
-
-		pnl_amount = abs(row.profit_or_loss)
-
-		jv.append('accounts', {
-			'account': credit_account,
-			'credit_in_account_currency': pnl_amount,
-		})
-
-		jv.append('accounts', {
-			'account': debit_account,
-			'debit_in_account_currency': pnl_amount
-		})
-
-		jv.cheque_no = self.name
-		jv.cheque_date = row.date
-
-		try:
-			jv.save()
-		except Exception as e:
-			frappe.throw(_(str(e)))
-		else:
-			jv.submit()
-			row.journal_entry = jv.name
-			self.jv_of_exit=jv.name
 			url = get_url_to_form("Journal Entry", jv.name)
 			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
-	
-	def validate_cancel_qty(self):
-		if self.qty<self.total_cancelled:
-			frappe.throw("Cancel Qty is not Greater than entry Qty")
 
-	def on_update_after_submit(self):
-		
-		self.calculate_cancellation()
-		self.validate_cancel_qty()
-		self.db_update()
-	
-	def calculate_cancellation(self):
-		total_exit_amount = sum([flt(d.exit_amount) for d in self.investment_portfolio_cancellation])
-		total_cancel_qty = sum([flt(d.qty) for d in self.investment_portfolio_cancellation])
-
-		if total_cancel_qty:
-			self.total_cancelled = total_cancel_qty
-			self.avg_exit_rate = flt(total_exit_amount) / flt(total_cancel_qty)
+	def calculate_pending_qty(self):
+		if not self.exit_qty and not len(self.investment_portfolio_segment):
+			self.pending_qty=self.qty
 		else:
-			self.total_cancelled = 0
-			self.avg_exit_rate=0
-		
-	
-		
+			total=0
+			for row1 in self.investment_portfolio_segment:
+				total+=flt(row1.exit_qty)
+			self.pending_qty=self.qty-total
+
+	def cancel_jv(self):
+		if self.jv_of_entry:
+			jv = frappe.get_doc("Journal Entry",self.jv_of_entry)
+			jv.cancel()
+			url = get_url_to_form("Journal Entry", jv.name)
+			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been cancelled 1.".format(url=url, doc=frappe.bold(jv.name))))	
+		for row in self.investment_portfolio_segment:
+			jv_doc = frappe.get_doc("Journal Entry" , row.jv_of_exit)
+			jv_doc.cancel()
+
+@frappe.whitelist()
+def create_exit(exit_price ,exit_qty , exit_date , exit_amount ,net_exit_amount , name ,jv_of_exit = None):
+	doc = frappe.get_doc("Investment Portfolio" , name)
+	doc.calculate_exit_amount()
+	jv = doc.create_row_exit_jv()
+	doc.append("investment_portfolio_segment" , {"exit_price":exit_price,"exit_date":exit_date ,"exit_qty":exit_qty , "exit_amount":exit_amount , "net_exit_amount" : net_exit_amount,"jv_of_exit": jv})
+	if sum([flt(row.exit_qty) for row in doc.investment_portfolio_segment]) > flt(doc.qty):
+		frappe.throw("Exit Quantity should not be greater than quantity")
+	doc.calculate_pending_qty()
+	doc.exit_price=0
+	doc.exit_qty=0
+	doc.exit_amount=0
+	doc.net_exit_amount=0
+	doc.save()	

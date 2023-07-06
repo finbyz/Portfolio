@@ -29,7 +29,7 @@ app_license = "MIT"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Journal Entry" : "public/js/journal_entry.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 doctype_list_js = {"Investment Portfolio" : "portfolio.portfolio.doctype.investment_portfolio.investment_portfolio_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -103,13 +103,11 @@ doctype_list_js = {"Investment Portfolio" : "portfolio.portfolio.doctype.investm
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-#	"*": {
-#		"on_update": "method",
-#		"on_cancel": "method",
-#		"on_trash": "method"
-#	}
-# }
+doc_events = {
+	"Journal Entry": {		
+		"before_cancel": "portfolio.portfolio.doctype.journal_entry.on_cancel"
+	}
+}
 
 # Scheduled Tasks
 # ---------------

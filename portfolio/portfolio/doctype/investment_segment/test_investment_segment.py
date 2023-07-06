@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestInvestmentPortfolioSegment(FrappeTestCase):
+class TestInvestmentSegment(FrappeTestCase):
 	pass

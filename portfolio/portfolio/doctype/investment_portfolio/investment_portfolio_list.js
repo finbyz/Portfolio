@@ -1,19 +1,20 @@
 let imports_in_progress = [];
 
 frappe.listview_settings['Investment Portfolio'] = {
-	add_fields: ['status','qty','total_cancelled'],
+	add_fields: ['status','qty','pending_qty',"docstatus"],
 	get_indicator: function(doc) {
         
-	    if(doc.total_cancelled==0.0){
-            return [__("holding"), "orange", "status,=,holding"];
+	    if(doc.pending_qty==doc.qty){
+            return [__("Holding"), "orange", "status,=,Holding"];
         }
-        if(doc.qty==doc.total_cancelled){
-            return [__("Exited"), "red", "status,=,Exited"];
+        if(doc.pending_qty == 0){
+            return [__("Exited"), "grey", "status,=, Exited"];
+        }
+        if(doc.qty!=doc.pending_qty){
+            return [__("Partially Exited"), "red", "status,=,Partially Exited"];
       }
 		
-		if(parseFloat((doc.qty)/2)<=doc.total_cancelled){
-            return [__("Partially Exited"), "gray", "status,=,Partially Exited"];
-        }
+		
        
 	},
    
