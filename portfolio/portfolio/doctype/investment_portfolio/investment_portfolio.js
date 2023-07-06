@@ -31,6 +31,23 @@ frappe.ui.form.on('Investment Portfolio', {
 	// 	cur_frm.set_value("net_exit_amount",net)
 
 	// },
+	onload:function(frm){
+		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
+			frm.set_df_property('jv_of_entry', 'read_only', 0);
+	}
+		else{
+			frm.set_df_property('jv_of_entry', 'read_only', 1);
+		}
+	},
+	is_existing:function(frm){
+		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
+			frm.set_df_property('jv_of_entry', 'read_only', 0);
+	}
+		else{
+			frm.set_df_property('jv_of_entry', 'read_only', 1);
+		}
+	},
+
 	
 	refresh:function(frm){
 	frm.set_query("holding_account", function(doc) {

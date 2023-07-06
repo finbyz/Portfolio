@@ -140,7 +140,7 @@ class InvestmentPortfolio(Document):
 			jv = frappe.get_doc("Journal Entry",self.jv_of_entry)
 			jv.cancel()
 			url = get_url_to_form("Journal Entry", jv.name)
-			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been cancelled 1.".format(url=url, doc=frappe.bold(jv.name))))	
+			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been cancelled .".format(url=url, doc=frappe.bold(jv.name))))	
 		for row in self.investment_portfolio_segment:
 			jv_doc = frappe.get_doc("Journal Entry" , row.jv_of_exit)
 			jv_doc.cancel()
