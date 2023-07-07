@@ -58,15 +58,16 @@
   {
    "allow_on_submit": 1,
    "fieldname": "jv_of_exit",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "JV of Exit",
+   "options": "Journal Entry",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-07-04 16:42:55.855900",
+ "modified": "2023-07-07 17:53:17.250052",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio Segment",

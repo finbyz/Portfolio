@@ -7,12 +7,12 @@ def on_cancel(self,method):
         if ips and parent:
             frappe.db.sql(f"""DELETE FROM `tabInvestment Portfolio Segment` 
             WHERE name = '{ips}'""")
-    total = 0
-    parent_doc =  frappe.get_doc("Investment Portfolio" , parent )
-    for row in parent_doc.investment_portfolio_segment:
-        total += row.get("exit_qty")
+        total = 0
+        parent_doc =  frappe.get_doc("Investment Portfolio" , parent )
+        for row in parent_doc.investment_portfolio_segment:
+            total += row.get("exit_qty")
 
-    parent_doc.db_set("pending_qty" , parent_doc.qty - total)
+        parent_doc.db_set("pending_qty" , parent_doc.qty - total)
    
     if frappe.db.exists("Investment Portfolio",self.cheque_no):
         

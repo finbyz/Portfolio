@@ -48,6 +48,8 @@ class InvestmentPortfolio(Document):
 	def create_row_exit_jv(self):
 		if not self.bank_account:
 			frappe.throw("Bank Account is compulsory")
+		if self.net_exit_amount > self.exit_amount:
+			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")	
 		jv = frappe.new_doc("Journal Entry")
 		jv.voucher_type = "Journal Entry"
 		jv.naming_series = "JV-.fiscal.-"

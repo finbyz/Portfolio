@@ -166,6 +166,7 @@
    "allow_on_submit": 1,
    "fieldname": "jv_of_exit",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "JV of Exit"
   },
   {
@@ -300,7 +301,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-06 14:49:20.110877",
+ "modified": "2023-07-07 17:59:14.638023",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
