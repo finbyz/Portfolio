@@ -32,7 +32,8 @@ class InvestmentPortfolio(Document):
 			self.status="Exited"
 		
 	def on_submit(self):
-		self.create_row_entry_jv()	
+		if not self.jv_of_entry:
+			self.create_row_entry_jv()	
 		
 	def calculate_entry_amount(self):
 		self.entry_amount=self.qty*self.entry_price
