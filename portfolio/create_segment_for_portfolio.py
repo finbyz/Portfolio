@@ -1,7 +1,7 @@
 import frappe
 
 def after_install():
-	ivs=frappe.new_doc("Investment Segment")
+    ivs=frappe.new_doc("Investment Segment")
     ivs.segment="Mutual Funds"
     ivs.save()
 
