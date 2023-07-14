@@ -28,22 +28,23 @@
   "total_cost_of_ownership",
   "entry_charges",
   "funds_debited_from",
-  "cancel_entry_jv",
+  "investment_charges_account",
   "exit_section_section",
   "exit_price",
   "exit_qty",
+  "set_charges",
   "jv_of_exit",
   "column_break_1cq96",
   "exit_date",
   "exit_amount",
   "net_exit_amount",
+  "exit_charges",
   "bank_account",
+  "funds_credited_to",
   "create_exit_jv",
   "account_section_section",
   "investment_portfolio_segment",
   "pending_qty",
-  "investment_charges_account",
-  "funds_credited_to",
   "amended_from"
  ],
  "fields": [
@@ -131,7 +132,8 @@
    "fieldname": "exit_price",
    "fieldtype": "Currency",
    "label": "Exit Price",
-   "options": "currency"
+   "options": "currency",
+   "precision": "4"
   },
   {
    "fieldname": "account_section_section",
@@ -174,8 +176,8 @@
    "fieldname": "funds_credited_to",
    "fieldtype": "Link",
    "label": "Income Account",
-   "options": "Account",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.exit_price",
+   "options": "Account"
   },
   {
    "fieldname": "column_break_jpb1w",
@@ -251,13 +253,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "cancel_entry_jv",
-   "fieldtype": "Button",
-   "hidden": 1,
-   "label": "Cancel Entry JV",
-   "options": "cancel_entry_jv"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "exit_amount",
    "fieldtype": "Float",
@@ -296,12 +291,26 @@
    "fieldtype": "Select",
    "label": "Naming Series",
    "options": "IP-.####"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "set_charges",
+   "fieldtype": "Check",
+   "label": "Set Charges"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.set_charges==1",
+   "fieldname": "exit_charges",
+   "fieldtype": "Float",
+   "label": "Exit Charges"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-07 17:59:14.638023",
+ "modified": "2023-07-14 12:16:33.009647",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",

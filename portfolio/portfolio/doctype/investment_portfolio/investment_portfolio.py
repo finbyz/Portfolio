@@ -49,45 +49,129 @@ class InvestmentPortfolio(Document):
 		if not self.bank_account:
 			frappe.throw("Bank Account is compulsory")
 		if self.net_exit_amount > self.exit_amount:
-			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")	
-		jv = frappe.new_doc("Journal Entry")
-		jv.voucher_type = "Journal Entry"
-		jv.naming_series = "JV-.fiscal.-"
-		jv.posting_date = self.exit_date
-		net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
-		if not self.company:
-			self.db_set('company', frappe.defaults.get_global_default('company'))
+			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")
+		if not self.set_charges==1:
+			jv = frappe.new_doc("Journal Entry")
+			jv.voucher_type = "Journal Entry"
+			jv.naming_series = "JV-.fiscal.-"
+			jv.posting_date = self.exit_date
+			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
+			if not self.company:
+				self.db_set('company', frappe.defaults.get_global_default('company'))
 
-		jv.company = self.company
+			jv.company = self.company
 
-		
-		jv.append('accounts', {
-			'account': self.bank_account,
-			'debit_in_account_currency': self.net_exit_amount,
-		})
+			
+			jv.append('accounts', {
+				'account': self.bank_account,
+				'debit_in_account_currency': self.net_exit_amount,
+			})
 
-		jv.append('accounts', {
-			'account': self.holding_account,
-			'credit_in_account_currency': (self.exit_qty*self.entry_price)
-		})
-		jv.append('accounts', {
-			'account': self.funds_credited_to,
-			'credit_in_account_currency': net
-		})
+			jv.append('accounts', {
+				'account': self.holding_account,
+				'credit_in_account_currency': (self.exit_qty*self.entry_price)
+			})
+			jv.append('accounts', {
+				'account': self.funds_credited_to,
+				'credit_in_account_currency': net
+			})
 
-		jv.cheque_no = self.name
-		jv.cheque_date = self.exit_date
-		
+			jv.cheque_no = self.name
+			jv.cheque_date = self.exit_date
+			
 
-		try:
-			jv.save()
-			jv.submit()
-			self.jv_of_exit = jv.name
-			url = get_url_to_form("Journal Entry", jv.name)
-			frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
-			return jv.name
-		except Exception as e:
-			frappe.throw(_(str(e)))	
+			try:
+				jv.save()
+				jv.submit()
+				self.jv_of_exit = jv.name
+				url = get_url_to_form("Journal Entry", jv.name)
+				frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
+				return jv.name
+			except Exception as e:
+				frappe.throw(_(str(e)))	
+		else:
+			jv = frappe.new_doc("Journal Entry")
+			jv.voucher_type = "Journal Entry"
+			jv.naming_series = "JV-.fiscal.-"
+			jv.posting_date = self.exit_date
+			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
+			if not self.company:
+				self.db_set('company', frappe.defaults.get_global_default('company'))
+
+			jv.company = self.company
+			s=self.exit_qty*self.entry_price
+			if self.exit_amount > s:
+				jv.append('accounts', {
+					'account': self.bank_account,
+					'debit_in_account_currency': self.net_exit_amount,
+				})
+				jv.append('accounts', {
+					'account': self.investment_charges_account,
+					'debit_in_account_currency': self.exit_charges,
+				})
+
+				jv.append('accounts', {
+					'account': self.holding_account,
+					'credit_in_account_currency': (self.exit_qty*self.entry_price)
+				})
+				jv.append('accounts', {
+					'account': self.funds_credited_to,
+					'credit_in_account_currency': (self.exit_amount-s)
+				})
+			elif  self.exit_amount < s:
+				jv.append('accounts', {
+					'account': self.bank_account,
+					'debit_in_account_currency': self.net_exit_amount,
+				})
+				jv.append('accounts', {
+					'account': self.investment_charges_account,
+					'debit_in_account_currency': self.exit_charges,
+				})
+				v=self.net_exit_amount+ self.exit_charges
+				jv.append('accounts', {
+					'account': self.funds_credited_to,
+					'debit_in_account_currency': (s-v)
+				})
+
+				jv.append('accounts', {
+					'account': self.holding_account,
+					'credit_in_account_currency': (self.exit_qty*self.entry_price)
+				})
+			elif self.exit_amount == s:
+				jv.append('accounts', {
+					'account': self.bank_account,
+					'debit_in_account_currency': self.net_exit_amount,
+				})
+				jv.append('accounts', {
+					'account': self.investment_charges_account,
+					'debit_in_account_currency': self.exit_charges,
+				})
+				# v=self.net_exit_amount+ self.exit_charges
+				# jv.append('accounts', {
+				# 	'account': self.funds_credited_to,
+				# 	'debit_in_account_currency': (s-v)
+				# })
+
+				jv.append('accounts', {
+					'account': self.holding_account,
+					'credit_in_account_currency': (self.exit_amount)
+				})
+
+
+			jv.cheque_no = self.name
+			jv.cheque_date = self.exit_date
+			
+
+			try:
+				jv.save()
+				jv.submit()
+				self.jv_of_exit = jv.name
+				url = get_url_to_form("Journal Entry", jv.name)
+				frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
+				return jv.name
+			except Exception as e:
+				frappe.throw(_(str(e)))
+
 
 	def create_row_entry_jv(self):		
 		jv = frappe.new_doc("Journal Entry")

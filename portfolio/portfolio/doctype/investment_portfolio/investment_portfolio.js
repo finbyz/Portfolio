@@ -23,18 +23,44 @@ frappe.ui.form.on('Investment Portfolio', {
 		cur_frm.set_value("entry_charges",total_entry_charges)
 
 	},
-	// cal_exit_charges:function(frm){
-	// 	let entry_amount=frm.doc.entry_amount;
-	// 	let exit_amount=frm.doc.exit_amount;
-	// 	let net=flt(entry_amount)-flt(exit_amount)
-	// 	console.log(net)
-	// 	cur_frm.set_value("net_exit_amount",net)
+	cal_exit_charges:function(frm){
+		console.log('exit_qty')
+		let net=flt(frm.doc.exit_amount)-flt(frm.doc.net_exit_amount)
+		frm.set_value("exit_charges",net)
+		frm.refresh_field('exit_charges')
 
-	// },
+	},
+	set_charges:function(frm){
+		if(frm.doc.set_charges==1){
+			frm.trigger("cal_exit_charges")
+		}
+	},
+	exit_price:function(frm){
+		if(frm.doc.exit_price ){
+			frm.trigger("cal_exit_charges")
+		}
+	},
+	exit_qty:function(frm){
+		if(frm.doc.exit_qty){
+			frm.trigger("cal_exit_charges")
+		}
+	},
+
 	onload:function(frm){
 		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
 			frm.set_df_property('jv_of_entry', 'read_only', 0);
-	}
+		}
+		else if(frm.doc.docstatus==1){
+			frm.set_df_property('qty', 'read_only', 1);
+			frm.set_df_property('entry_price', 'read_only', 1);
+			frm.set_df_property('holding_account', 'read_only', 1);
+			frm.set_df_property('entry_amount', 'read_only', 1);
+			frm.set_df_property('total_cost_of_ownership', 'read_only', 1);
+			frm.set_df_property('entry_charges', 'read_only', 1);
+			frm.set_df_property('funds_debited_from', 'read_only', 1);
+			frm.set_df_property('investment_charges_account', 'read_only', 1);
+
+		}
 		else{
 			frm.set_df_property('jv_of_entry', 'read_only', 1);
 		}
@@ -105,7 +131,8 @@ frappe.ui.form.on('Investment Portfolio', {
 	total_values:function(frm){
 	let total_prices=frm.doc.exit_qty*frm.doc.exit_price;
    
-	cur_frm.set_value("exit_amount",total_prices)
+	cur_frm.set_value("exit_amount",total_prices);
+	cur_frm.set_value("net_exit_amount",total_prices)
 	},
 	exit_qty:function(frm){
    	if(frm.doc.exit_qty){
