@@ -1,5 +1,6 @@
 import frappe
-
+def after_install():
+    create_document()
 def execute():
     create_document()
     

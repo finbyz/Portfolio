@@ -65,7 +65,7 @@ doctype_list_js = {"Investment Portfolio" : "portfolio.portfolio.doctype.investm
 # ------------
 
 # before_install = "portfolio.create_segment_for_portfolio.before_install"
-after_install = "portfolio.create_segment_for_portfolio.after_install"
+after_install = "portfolio.create_doc.create_document.after_install"
 
 # Uninstallation
 # ------------

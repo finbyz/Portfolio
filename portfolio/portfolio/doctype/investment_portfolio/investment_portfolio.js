@@ -1,6 +1,5 @@
 // Copyright (c) 2023, finbyz and contributors
 // For license information, please see license.txt
-
 frappe.ui.form.on('Investment Portfolio', {
 	total_value:function(frm){
          let total_price=frm.doc.qty*frm.doc.entry_price;
@@ -19,13 +18,11 @@ frappe.ui.form.on('Investment Portfolio', {
 		let entry_amount=frm.doc.entry_amount;
 		let total_cost_of_ownership=frm.doc.total_cost_of_ownership;
 		let total_entry_charges=flt(total_cost_of_ownership)-flt(entry_amount)
-		console.log(total_entry_charges)
 		cur_frm.set_value("entry_charges",total_entry_charges)
 
 	},
 	cal_exit_charges:function(frm){
-		console.log('exit_qty')
-		let net=flt(frm.doc.exit_amount)-flt(frm.doc.net_exit_amount)
+		let net=flt(frm.doc.exit_amount - frm.doc.net_exit_amount)
 		frm.set_value("exit_charges",net)
 		frm.refresh_field('exit_charges')
 
@@ -39,28 +36,34 @@ frappe.ui.form.on('Investment Portfolio', {
 		if(frm.doc.exit_price ){
 			frm.trigger("cal_exit_charges")
 		}
+		if(frm.doc.entry_price){
+		frm.trigger("total_values")
+		frm.trigger('cal_exit_charges')
+		}
 	},
 	exit_qty:function(frm){
-		if(frm.doc.exit_qty){
+		if(frm.doc.exit_price ){
 			frm.trigger("cal_exit_charges")
 		}
+		if(frm.doc.exit_qty){
+			frm.trigger("total_values")}
 	},
 
 	onload:function(frm){
 		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
 			frm.set_df_property('jv_of_entry', 'read_only', 0);
 		}
-		else if(frm.doc.docstatus==1){
-			frm.set_df_property('qty', 'read_only', 1);
-			frm.set_df_property('entry_price', 'read_only', 1);
-			frm.set_df_property('holding_account', 'read_only', 1);
-			frm.set_df_property('entry_amount', 'read_only', 1);
-			frm.set_df_property('total_cost_of_ownership', 'read_only', 1);
-			frm.set_df_property('entry_charges', 'read_only', 1);
-			frm.set_df_property('funds_debited_from', 'read_only', 1);
-			frm.set_df_property('investment_charges_account', 'read_only', 1);
+		// else if(frm.doc.docstatus==1){
+		// 	frm.set_df_property('qty', 'read_only', 1);
+		// 	frm.set_df_property('entry_price', 'read_only', 1);
+		// 	frm.set_df_property('holding_account', 'read_only', 1);
+		// 	frm.set_df_property('entry_amount', 'read_only', 1);
+		// 	frm.set_df_property('total_cost_of_ownership', 'read_only', 1);
+		// 	frm.set_df_property('entry_charges', 'read_only', 1);
+		// 	frm.set_df_property('funds_debited_from', 'read_only', 1);
+		// 	frm.set_df_property('investment_charges_account', 'read_only', 1);
 
-		}
+		// }
 		else{
 			frm.set_df_property('jv_of_entry', 'read_only', 1);
 		}
@@ -73,75 +76,67 @@ frappe.ui.form.on('Investment Portfolio', {
 			frm.set_df_property('jv_of_entry', 'read_only', 1);
 		}
 	},
-
-	
 	refresh:function(frm){
-	frm.set_query("holding_account", function(doc) {
-		return {
-			"filters": {
-				"company": doc.company,
-				"root_type":"Asset",
-				"is_group": 0
+		frm.set_query("holding_account", function(doc) {
+			return {
+				"filters": {
+					"company": doc.company,
+					"root_type":"Asset",
+					"is_group": 0
+					
+				}
+			};
+		});
+		frm.set_query('funds_debited_from', function(doc) {
+			return {
+				filters: {
+					"is_group": 0,
+					"company": doc.company,
+					"account_type": "Bank"
 				
-			}
-		};
-	});
-	frm.set_query('funds_debited_from', function(doc) {
-		return {
-			filters: {
-				"is_group": 0,
-				"company": doc.company,
-				"account_type": "Bank"
-			
-			}
-		};
-	});
-	frm.set_query('investment_charges_account', function(doc) {
-		return {
-			filters: {
-				"is_group": 0,
-				"company": doc.company,
-				"account_type":"Expense Account"
-			
-			}
-		};
-	});
-	frm.set_query('bank_account', function(doc) {
-		return {
-			filters: {
-				"is_group": 0,
-				"company": doc.company,
-				"account_type": "Bank"
-			
-			}
-		};
-	});
-	frm.set_query('funds_credited_to', function(doc) {
-		return {
-			filters: {
-				"is_group": 0,
-				"company": doc.company,
-				"account_type":"Income Account"
-			
-			}
-		};
-	});
-},
-
+				}
+			};
+		});
+		frm.set_query('investment_charges_account', function(doc) {
+			return {
+				filters: {
+					"is_group": 0,
+					"company": doc.company,
+					"account_type":"Expense Account"
+				
+				}
+			};
+		});
+		frm.set_query('bank_account', function(doc) {
+			return {
+				filters: {
+					"is_group": 0,
+					"company": doc.company,
+					"account_type": "Bank"
+				
+				}
+			};
+		});
+		frm.set_query('funds_credited_to', function(doc) {
+			return {
+				filters: {
+					"is_group": 0,
+					"company": doc.company,
+					"account_type":"Income Account"
+				
+				}
+			};
+		});
+	},
+	net_exit_amount:function(frm){
+		frm.trigger("cal_exit_charges")
+	},
 	total_values:function(frm){
-	let total_prices=frm.doc.exit_qty*frm.doc.exit_price;
-   
-	cur_frm.set_value("exit_amount",total_prices);
-	cur_frm.set_value("net_exit_amount",total_prices)
-	},
-	exit_qty:function(frm){
-   	if(frm.doc.exit_qty){
-   	frm.trigger("total_values")}
-	},
-	exit_price:function(frm){
-   	if(frm.doc.entry_price){
-   	frm.trigger("total_values")
-	}},
+		let total_prices=frm.doc.exit_qty*frm.doc.exit_price;
+	
+		cur_frm.set_value("exit_amount",total_prices);
+		cur_frm.set_value("net_exit_amount",total_prices)
+		},
 
 	
 	entry_amount:function(frm){
@@ -176,21 +171,6 @@ frappe.ui.form.on('Investment Portfolio', {
 				}
 			});
 		}
-	
-
-	// cal_exit_charges_calculated:function(frm,cdt,cdn){
-    //     let d = locals[cdt][cdn]
-	// 	cur_frm.set_value(cdt,cdn,"exit_charges_calculated",frm.doc.net_exit_amount-d.exit_amount)
-	// },
-	// cal_difference_rate:function(frm,cdt,cdn){
-	// 	let enter_price=frm.doc.entry_price
-	// 	let exit_price=frm.doc.exit_price
-	// 	console.log(enter_price)
-	// 	console.log(exit_price)
-	// 	frappe.model.set_value(cdt,cdn,"rate_diff",exit_price-enter_price)
-
-
-	// }
 });
 
 
