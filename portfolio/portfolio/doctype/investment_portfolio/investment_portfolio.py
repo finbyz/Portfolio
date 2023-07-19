@@ -184,20 +184,35 @@ class InvestmentPortfolio(Document):
 
 		jv.company = self.company
 
-		
-		jv.append('accounts', {
-			'account': self.funds_debited_from,
-			'credit_in_account_currency': self.total_cost_of_ownership,
-		})
+		if self.entry_charges != 0:
+			jv.append('accounts', {
+				'account': self.funds_debited_from,
+				'credit_in_account_currency': self.total_cost_of_ownership,
+			})
 
-		jv.append('accounts', {
-			'account': self.investment_charges_account,
-			'debit_in_account_currency': self.entry_charges
-		})
-		jv.append('accounts', {
-			'account': self.holding_account,
-			'debit_in_account_currency': self.entry_amount
-		})
+			jv.append('accounts', {
+				'account': self.investment_charges_account,
+				'debit_in_account_currency': self.entry_charges
+			})
+			jv.append('accounts', {
+				'account': self.holding_account,
+				'debit_in_account_currency': self.entry_amount
+			})
+		else:
+			jv.append('accounts', {
+				'account': self.funds_debited_from,
+				'credit_in_account_currency': self.total_cost_of_ownership,
+			})
+
+			# jv.append('accounts', {
+			# 	'account': self.investment_charges_account,
+			# 	'debit_in_account_currency': self.entry_charges
+			# })
+			jv.append('accounts', {
+				'account': self.holding_account,
+				'debit_in_account_currency': self.entry_amount
+			})
+
 
 		jv.cheque_no = self.name
 		jv.cheque_date = self.date_of_investment

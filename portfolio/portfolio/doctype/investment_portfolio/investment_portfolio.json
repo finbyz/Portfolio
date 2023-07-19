@@ -255,6 +255,7 @@
    "fieldname": "investment_charges_account",
    "fieldtype": "Link",
    "label": "Investment Charges Account",
+   "mandatory_depends_on": "eval:doc.entry_charges!=0;",
    "options": "Account",
    "read_only_depends_on": "eval:doc.docstatus == 1;",
    "reqd": 1
@@ -317,7 +318,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-14 06:32:11.330124",
+ "modified": "2023-07-19 05:29:11.656911",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
