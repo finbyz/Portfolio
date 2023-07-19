@@ -340,11 +340,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
-<<<<<<< HEAD
  "modified": "2023-07-19 15:57:07.890690",
-=======
- "modified": "2023-07-19 05:29:11.656911",
->>>>>>> e4ec8fbc528a19be4b49d4e6db0bab31647c960a
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
