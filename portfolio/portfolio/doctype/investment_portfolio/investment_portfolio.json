@@ -15,7 +15,7 @@
   "currency",
   "column_break_jpb1w",
   "status",
-  "date_of_investment",
+  "posting_date",
   "company",
   "is_existing",
   "entry_section_section",
@@ -49,12 +49,10 @@
  ],
  "fields": [
   {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Company",
-   "options": "Company",
-   "reqd": 1
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "IP-.####"
   },
   {
    "fieldname": "segment",
@@ -69,21 +67,9 @@
    "options": "Category"
   },
   {
-   "fieldname": "date_of_investment",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Date of Investment",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "qty",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Qty",
-   "precision": "4",
-   "read_only_depends_on": "eval:doc.docstatus == 1;",
-   "reqd": 1
+   "fieldname": "script",
+   "fieldtype": "Data",
+   "label": "Script "
   },
   {
    "fetch_from": "company.default_currency",
@@ -94,6 +80,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "column_break_jpb1w",
+   "fieldtype": "Column Break"
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "status",
    "fieldtype": "Data",
@@ -101,10 +91,41 @@
    "label": "Status"
   },
   {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date of Investment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_existing",
+   "fieldtype": "Check",
+   "label": "Is Existing"
+  },
+  {
    "fieldname": "entry_section_section",
    "fieldtype": "Section Break",
    "label": "Entry Section",
    "read_only_depends_on": "eval:doc.docstatus == 1;"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "precision": "4",
+   "read_only_depends_on": "eval:doc.docstatus == 1;",
+   "reqd": 1
   },
   {
    "allow_on_submit": 1,
@@ -119,44 +140,9 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "entry_amount",
-   "fieldtype": "Float",
-   "label": "Entry Amount",
-   "read_only": 1,
-   "read_only_depends_on": "eval:doc.docstatus == 1;"
-  },
-  {
-   "depends_on": "eval:doc.docstatus==1;",
-   "fieldname": "exit_section_section",
-   "fieldtype": "Section Break",
-   "label": "Exit Section"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "exit_price",
-   "fieldtype": "Currency",
-   "label": "Exit Price",
-   "options": "currency",
-   "precision": "4"
-  },
-  {
-   "fieldname": "account_section_section",
-   "fieldtype": "Section Break"
-  },
-  {
-   "allow_on_submit": 1,
    "fieldname": "holding_account",
    "fieldtype": "Link",
    "label": "Capital Account",
-   "options": "Account",
-   "read_only_depends_on": "eval:doc.docstatus == 1;",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "funds_debited_from",
-   "fieldtype": "Link",
-   "label": "Bank Accounts",
    "options": "Account",
    "read_only_depends_on": "eval:doc.docstatus == 1;",
    "reqd": 1
@@ -167,26 +153,8 @@
    "fieldtype": "Link",
    "label": "JV of Entry",
    "mandatory_depends_on": "eval:doc.is_existing==1",
+   "no_copy": 1,
    "options": "Journal Entry"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "jv_of_exit",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "JV of Exit"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "funds_credited_to",
-   "fieldtype": "Link",
-   "label": "Income Account",
-   "mandatory_depends_on": "eval:doc.exit_price",
-   "options": "Account"
-  },
-  {
-   "fieldname": "column_break_jpb1w",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "column_break_818hx",
@@ -194,19 +162,11 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Investment Portfolio",
-   "print_hide": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "bank_account",
-   "fieldtype": "Link",
-   "label": "Bank Account",
-   "options": "Account"
+   "fieldname": "entry_amount",
+   "fieldtype": "Float",
+   "label": "Entry Amount",
+   "read_only": 1,
+   "read_only_depends_on": "eval:doc.docstatus == 1;"
   },
   {
    "allow_on_submit": 1,
@@ -225,9 +185,56 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "net_exit_amount",
+   "fieldname": "funds_debited_from",
+   "fieldtype": "Link",
+   "label": "Bank Accounts",
+   "options": "Account",
+   "read_only_depends_on": "eval:doc.docstatus == 1;",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "investment_charges_account",
+   "fieldtype": "Link",
+   "label": "Investment Charges Account",
+   "options": "Account",
+   "read_only_depends_on": "eval:doc.docstatus == 1;",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.docstatus==1;",
+   "fieldname": "exit_section_section",
+   "fieldtype": "Section Break",
+   "label": "Exit Section"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_price",
+   "fieldtype": "Currency",
+   "label": "Exit Price",
+   "options": "currency",
+   "precision": "4"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "exit_qty",
    "fieldtype": "Float",
-   "label": "Net Exit Amount"
+   "label": "Exit Qty"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "set_charges",
+   "fieldtype": "Check",
+   "label": "Set Charges"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "jv_of_exit",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "JV of Exit",
+   "no_copy": 1
   },
   {
    "fieldname": "column_break_1cq96",
@@ -241,35 +248,47 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "exit_qty",
-   "fieldtype": "Float",
-   "label": "Exit Qty"
-  },
-  {
-   "fieldname": "script",
-   "fieldtype": "Data",
-   "label": "Script "
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "investment_charges_account",
-   "fieldtype": "Link",
-   "label": "Investment Charges Account",
-   "options": "Account",
-   "read_only_depends_on": "eval:doc.docstatus == 1;",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
    "fieldname": "exit_amount",
    "fieldtype": "Float",
    "label": "Exit Amount",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
+   "fieldname": "net_exit_amount",
+   "fieldtype": "Float",
+   "label": "Net Exit Amount"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.set_charges==1",
+   "fieldname": "exit_charges",
+   "fieldtype": "Float",
+   "label": "Exit Charges"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Account"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "funds_credited_to",
+   "fieldtype": "Link",
+   "label": "Income Account",
+   "mandatory_depends_on": "eval:doc.exit_price",
+   "options": "Account"
+  },
+  {
    "fieldname": "create_exit_jv",
    "fieldtype": "Button",
    "label": "Create Exit JV"
+  },
+  {
+   "fieldname": "account_section_section",
+   "fieldtype": "Section Break"
   },
   {
    "allow_on_submit": 1,
@@ -288,36 +307,19 @@
    "read_only": 1
   },
   {
-   "default": "0",
-   "fieldname": "is_existing",
-   "fieldtype": "Check",
-   "label": "Is Existing"
-  },
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Naming Series",
-   "options": "IP-.####"
-  },
-  {
    "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "set_charges",
-   "fieldtype": "Check",
-   "label": "Set Charges"
-  },
-  {
-   "allow_on_submit": 1,
-   "depends_on": "eval:doc.set_charges==1",
-   "fieldname": "exit_charges",
-   "fieldtype": "Float",
-   "label": "Exit Charges"
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Investment Portfolio",
+   "print_hide": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-14 06:32:11.330124",
+ "modified": "2023-07-19 15:57:07.890690",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
@@ -325,6 +327,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -334,6 +338,37 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],

@@ -50,6 +50,10 @@ frappe.ui.form.on('Investment Portfolio', {
 	},
 
 	onload:function(frm){
+		if(frm.doc.docstatus == 0){
+			frm.set_value("jv_of_entry","")
+			frm.set_value("jv_of_exit","")
+		}
 		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
 			frm.set_df_property('jv_of_entry', 'read_only', 0);
 		}

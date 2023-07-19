@@ -5,6 +5,7 @@ import frappe
 from frappe.model.document import Document
 from frappe import _
 from frappe.utils import flt, date_diff, nowdate, get_url_to_form,flt
+import erpnext
 
 class InvestmentPortfolio(Document):
 	
@@ -22,6 +23,10 @@ class InvestmentPortfolio(Document):
 
 	def on_update(self):
 		self.set_status()
+		if self.docstatus == 0:
+			self.jv_of_entry = None
+			self.jv_of_exit = None
+
 
 	def set_status(self):
 		if self.pending_qty==self.qty:
@@ -42,7 +47,7 @@ class InvestmentPortfolio(Document):
 		self.exit_amount=self.exit_price*self.exit_qty
 		
 	def validate_exit_date(self):
-		if self.date_of_investment > self.exit_date:
+		if self.posting_date > self.exit_date:
 			frappe.throw("Exit Date Cannot be Greater than Investment Date")	
 	
 	def create_row_exit_jv(self):
@@ -50,10 +55,11 @@ class InvestmentPortfolio(Document):
 			frappe.throw("Bank Account is compulsory")
 		if self.net_exit_amount > self.exit_amount:
 			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")
+		
+		cost_center = erpnext.get_default_cost_center(self.company)
 		if not self.set_charges==1:
 			jv = frappe.new_doc("Journal Entry")
 			jv.voucher_type = "Journal Entry"
-			jv.naming_series = "JV-.fiscal.-"
 			jv.posting_date = self.exit_date
 			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
 			if not self.company:
@@ -65,15 +71,18 @@ class InvestmentPortfolio(Document):
 			jv.append('accounts', {
 				'account': self.bank_account,
 				'debit_in_account_currency': self.net_exit_amount,
+				'cost_center':cost_center,
 			})
 
 			jv.append('accounts', {
 				'account': self.holding_account,
-				'credit_in_account_currency': (self.exit_qty*self.entry_price)
+				'credit_in_account_currency': (self.exit_qty*self.entry_price),
+				'cost_center':cost_center,
 			})
 			jv.append('accounts', {
 				'account': self.funds_credited_to,
-				'credit_in_account_currency': net
+				'credit_in_account_currency': net,
+				'cost_center':cost_center,
 			})
 
 			jv.cheque_no = self.name
@@ -92,7 +101,6 @@ class InvestmentPortfolio(Document):
 		else:
 			jv = frappe.new_doc("Journal Entry")
 			jv.voucher_type = "Journal Entry"
-			jv.naming_series = "JV-.fiscal.-"
 			jv.posting_date = self.exit_date
 			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
 			if not self.company:
@@ -104,47 +112,57 @@ class InvestmentPortfolio(Document):
 				jv.append('accounts', {
 					'account': self.bank_account,
 					'debit_in_account_currency': self.net_exit_amount,
+					'cost_center':cost_center,
 				})
 				jv.append('accounts', {
 					'account': self.investment_charges_account,
 					'debit_in_account_currency': self.exit_charges,
+					'cost_center':cost_center,
 				})
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_qty*self.entry_price)
+					'credit_in_account_currency': (self.exit_qty*self.entry_price),
+					'cost_center':cost_center,
 				})
 				jv.append('accounts', {
 					'account': self.funds_credited_to,
-					'credit_in_account_currency': (self.exit_amount-s)
+					'credit_in_account_currency': (self.exit_amount-s),
+					'cost_center':cost_center,
 				})
 			elif  self.exit_amount < s:
 				jv.append('accounts', {
 					'account': self.bank_account,
 					'debit_in_account_currency': self.net_exit_amount,
+					'cost_center':cost_center,
 				})
 				jv.append('accounts', {
 					'account': self.investment_charges_account,
 					'debit_in_account_currency': self.exit_charges,
+					'cost_center':cost_center,
 				})
 				v=self.net_exit_amount+ self.exit_charges
 				jv.append('accounts', {
 					'account': self.funds_credited_to,
-					'debit_in_account_currency': (s-v)
+					'debit_in_account_currency': (s-v),
+					'cost_center':cost_center,
 				})
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_qty*self.entry_price)
+					'credit_in_account_currency': (self.exit_qty*self.entry_price),
+					'cost_center':cost_center,
 				})
 			elif self.exit_amount == s:
 				jv.append('accounts', {
 					'account': self.bank_account,
 					'debit_in_account_currency': self.net_exit_amount,
+					'cost_center':cost_center,
 				})
 				jv.append('accounts', {
 					'account': self.investment_charges_account,
 					'debit_in_account_currency': self.exit_charges,
+					'cost_center':cost_center,
 				})
 				# v=self.net_exit_amount+ self.exit_charges
 				# jv.append('accounts', {
@@ -154,7 +172,8 @@ class InvestmentPortfolio(Document):
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_amount)
+					'credit_in_account_currency': (self.exit_amount),
+					'cost_center':cost_center,
 				})
 
 
@@ -176,34 +195,39 @@ class InvestmentPortfolio(Document):
 	def create_row_entry_jv(self):		
 		jv = frappe.new_doc("Journal Entry")
 		jv.voucher_type = "Journal Entry"
-		jv.naming_series = "JV-.fiscal.-"
-		jv.posting_date = self.date_of_investment
+		jv.posting_date = self.posting_date
 		
 		if not self.company:
 			self.db_set('company', frappe.defaults.get_global_default('company'))
 
 		jv.company = self.company
+		cost_center = erpnext.get_default_cost_center(self.company)
 
 		
 		jv.append('accounts', {
 			'account': self.funds_debited_from,
 			'credit_in_account_currency': self.total_cost_of_ownership,
+			'cost_center': cost_center
 		})
 
 		jv.append('accounts', {
 			'account': self.investment_charges_account,
-			'debit_in_account_currency': self.entry_charges
+			'debit_in_account_currency': self.entry_charges,
+			'cost_center': cost_center
 		})
 		jv.append('accounts', {
 			'account': self.holding_account,
-			'debit_in_account_currency': self.entry_amount
+			'debit_in_account_currency': self.entry_amount,
+			'cost_center': cost_center
 		})
 
 		jv.cheque_no = self.name
-		jv.cheque_date = self.date_of_investment
+		jv.cheque_date = self.posting_date
 
 		try:
+			print(jv.accounts[0].cost_center)
 			jv.save()
+			print(jv.accounts[0].cost_center)
 			jv.submit()
 			self.db_set("jv_of_entry" , jv.name)
 		except Exception as e:
