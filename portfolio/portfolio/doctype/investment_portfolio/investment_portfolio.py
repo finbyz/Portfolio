@@ -203,6 +203,7 @@ class InvestmentPortfolio(Document):
 		jv.company = self.company
 		cost_center = erpnext.get_default_cost_center(self.company)
 
+<<<<<<< HEAD
 		
 		jv.append('accounts', {
 			'account': self.funds_debited_from,
@@ -220,6 +221,37 @@ class InvestmentPortfolio(Document):
 			'debit_in_account_currency': self.entry_amount,
 			'cost_center': cost_center
 		})
+=======
+		if self.entry_charges != 0:
+			jv.append('accounts', {
+				'account': self.funds_debited_from,
+				'credit_in_account_currency': self.total_cost_of_ownership,
+			})
+
+			jv.append('accounts', {
+				'account': self.investment_charges_account,
+				'debit_in_account_currency': self.entry_charges
+			})
+			jv.append('accounts', {
+				'account': self.holding_account,
+				'debit_in_account_currency': self.entry_amount
+			})
+		else:
+			jv.append('accounts', {
+				'account': self.funds_debited_from,
+				'credit_in_account_currency': self.total_cost_of_ownership,
+			})
+
+			# jv.append('accounts', {
+			# 	'account': self.investment_charges_account,
+			# 	'debit_in_account_currency': self.entry_charges
+			# })
+			jv.append('accounts', {
+				'account': self.holding_account,
+				'debit_in_account_currency': self.entry_amount
+			})
+
+>>>>>>> e4ec8fbc528a19be4b49d4e6db0bab31647c960a
 
 		jv.cheque_no = self.name
 		jv.cheque_date = self.posting_date

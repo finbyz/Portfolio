@@ -248,6 +248,30 @@
   },
   {
    "allow_on_submit": 1,
+<<<<<<< HEAD
+=======
+   "fieldname": "exit_qty",
+   "fieldtype": "Float",
+   "label": "Exit Qty"
+  },
+  {
+   "fieldname": "script",
+   "fieldtype": "Data",
+   "label": "Script "
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "investment_charges_account",
+   "fieldtype": "Link",
+   "label": "Investment Charges Account",
+   "mandatory_depends_on": "eval:doc.entry_charges!=0;",
+   "options": "Account",
+   "read_only_depends_on": "eval:doc.docstatus == 1;",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+>>>>>>> e4ec8fbc528a19be4b49d4e6db0bab31647c960a
    "fieldname": "exit_amount",
    "fieldtype": "Float",
    "label": "Exit Amount",
@@ -319,7 +343,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
+<<<<<<< HEAD
  "modified": "2023-07-19 15:57:07.890690",
+=======
+ "modified": "2023-07-19 05:29:11.656911",
+>>>>>>> e4ec8fbc528a19be4b49d4e6db0bab31647c960a
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
