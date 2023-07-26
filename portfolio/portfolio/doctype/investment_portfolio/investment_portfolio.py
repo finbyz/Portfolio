@@ -18,25 +18,35 @@ class InvestmentPortfolio(Document):
 		self.set_status()
 
 	def on_cancel(self):
+		self.set_status()
 		self.cancel_jv()
 	
 
 	def on_update(self):
 		self.set_status()
-		if self.docstatus == 0:
+		if self.docstatus == 0 and self.is_existing == 0:
 			self.jv_of_entry = None
 			self.jv_of_exit = None
 
 
 	def set_status(self):
-		if self.pending_qty==self.qty:
-			self.status="Holding"
-		if self.qty!=self.pending_qty:
-			self.status="Partially Exited"
-		if self.pending_qty == 0:
-			self.status="Exited"
+		if self.docstatus == 0:
+			self.status = "Draft"
+		if self.docstatus == 1:
+			print(self.pending_qty)
+			print(self.qty)
+			if self.pending_qty==self.qty:
+				self.status="Holding"
+			if self.qty!=self.pending_qty:
+				self.status="Partially Exited"
+			if self.pending_qty == 0:
+				self.status="Exited"
+		if self.docstatus ==2:
+			self.status = "Cancelled"
+		
 		
 	def on_submit(self):
+		self.set_status()
 		if not self.jv_of_entry:
 			self.create_row_entry_jv()	
 		
@@ -153,7 +163,7 @@ class InvestmentPortfolio(Document):
 					'credit_in_account_currency': (self.exit_qty*self.entry_price),
 					'cost_center':cost_center,
 				})
-			elif self.exit_amount == s:
+			elif self.exit_amount == calculated_exit_amount:
 				jv.append('accounts', {
 					'account': self.bank_account,
 					'debit_in_account_currency': self.net_exit_amount,

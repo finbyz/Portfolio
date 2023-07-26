@@ -57,18 +57,22 @@
   {
    "fieldname": "segment",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Segment",
    "options": "Investment Segment"
   },
   {
    "fieldname": "category",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Category",
    "options": "Category"
   },
   {
    "fieldname": "script",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Script "
   },
   {
@@ -85,12 +89,16 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "fieldname": "status",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "hidden": 1,
-   "label": "Status"
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nHolding\nPartially Exited\nExited\nCancelled"
   },
   {
+   "columns": 1,
    "fieldname": "posting_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -98,9 +106,11 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "company",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Company",
    "options": "Company",
    "reqd": 1
@@ -119,6 +129,7 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -129,6 +140,7 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "fieldname": "entry_price",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -162,8 +174,10 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "fieldname": "entry_amount",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Entry Amount",
    "read_only": 1,
    "read_only_depends_on": "eval:doc.docstatus == 1;"
@@ -255,6 +269,8 @@
   {
    "fieldname": "script",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Script "
   },
   {
@@ -262,7 +278,6 @@
    "fieldname": "investment_charges_account",
    "fieldtype": "Link",
    "label": "Investment Charges Account",
-   "mandatory_depends_on": "eval:doc.entry_charges!=0;",
    "options": "Account",
    "read_only_depends_on": "eval:doc.docstatus == 1;",
    "reqd": 1
@@ -340,7 +355,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-19 15:57:07.890690",
+ "modified": "2023-07-19 18:45:51.596287",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",

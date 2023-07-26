@@ -9,7 +9,10 @@ def create_document():
         ivs=frappe.new_doc("Investment Segment")
         ivs.segment="Mutual Funds"
         ivs.save()
-
+    if not frappe.db.exists("Investment Segment" , "ETF"):
+        ivs=frappe.new_doc("Investment Segment")
+        ivs.segment="ETF"
+        ivs.save()
     if not frappe.db.exists("Investment Segment" , "Equity"):
         ivs=frappe.new_doc("Investment Segment")
         ivs.segment="Equity"
