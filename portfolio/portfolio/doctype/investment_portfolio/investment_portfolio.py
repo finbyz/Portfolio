@@ -51,7 +51,8 @@ class InvestmentPortfolio(Document):
 			self.create_row_entry_jv()	
 		
 	def calculate_entry_amount(self):
-		self.entry_amount=self.qty*self.entry_price
+		if not self.manual_entry_amount:
+			self.entry_amount=self.qty*self.entry_price
 	
 	def calculate_exit_amount(self):
 		self.exit_amount=self.exit_price*self.exit_qty

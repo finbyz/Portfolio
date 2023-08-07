@@ -2,9 +2,10 @@
 // For license information, please see license.txt
 frappe.ui.form.on('Investment Portfolio', {
 	total_value:function(frm){
+		if(!frm.doc.manual_entry_amount){
          let total_price=frm.doc.qty*frm.doc.entry_price;
-		
 		 cur_frm.set_value("entry_amount",total_price)
+		}
 	},
 	qty:function(frm){
 		if(frm.doc.qty){
@@ -14,6 +15,10 @@ frappe.ui.form.on('Investment Portfolio', {
 		if(frm.doc.entry_price){
 		frm.trigger("total_value")
 	}},
+	manual_entry_amount:function(frm){
+		if(frm.doc.entry_price && frm.doc.qty && frm.doc.manual_entry_amount ==0){
+		frm.trigger("total_value")
+	}},	
 	cal_entry_charges:function(frm){
 		let entry_amount=frm.doc.entry_amount;
 		let total_cost_of_ownership=frm.doc.total_cost_of_ownership;
