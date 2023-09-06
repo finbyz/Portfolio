@@ -3,7 +3,7 @@ from . import __version__ as app_version
 app_name = "portfolio"
 app_title = "Portfolio"
 app_publisher = "finbyz"
-app_description = "Protfolio"
+app_description = "Portfolio"
 app_email = "info.finbyz.com"
 app_license = "MIT"
 
@@ -31,7 +31,6 @@ app_license = "MIT"
 # include js in doctype views
 doctype_js = {"Journal Entry" : "public/js/journal_entry.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-doctype_list_js = {"Investment Portfolio" : "portfolio.portfolio.doctype.investment_portfolio.investment_portfolio_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 

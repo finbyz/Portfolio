@@ -137,8 +137,19 @@ frappe.ui.form.on('Investment Portfolio', {
 			};
 		});
 	},
+	validate: function(frm) {
+		if (frm.doc.total_cost_of_ownership < frm.doc.entry_amount) {
+			frappe.throw("Total Cost of Ownership should be greater than or greater than equal to Entry Amount.");
+			validated = false;
+		}
+	},
 	net_exit_amount:function(frm){
 		frm.trigger("cal_exit_charges")
+	},
+	exit_charges:function(frm) {
+		if (frm.doc.set_charges==1) {
+			frm.set_value('net_exit_amount', frm.doc.exit_amount - frm.doc.exit_charges);
+		}
 	},
 	total_values:function(frm){
 		let total_prices=frm.doc.exit_qty*frm.doc.exit_price;
