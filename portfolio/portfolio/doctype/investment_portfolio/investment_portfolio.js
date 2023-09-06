@@ -71,8 +71,14 @@ frappe.ui.form.on('Investment Portfolio', {
 	is_existing:function(frm){
 		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
 			frm.set_df_property('jv_of_entry', 'read_only', 0);
-	}
-		else{
+			frm.set_query('jv_of_entry', function(doc) {
+				return {
+					filters: {
+						"docstatus": 1
+					}
+				};
+			});
+		} else {
 			frm.set_df_property('jv_of_entry', 'read_only', 1);
 		}
 	},
