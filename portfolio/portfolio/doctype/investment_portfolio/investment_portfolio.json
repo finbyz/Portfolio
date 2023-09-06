@@ -31,15 +31,15 @@
   "funds_debited_from",
   "investment_charges_account",
   "exit_section_section",
-  "exit_qty",
   "exit_price",
+  "exit_qty",
   "set_charges",
   "jv_of_exit",
   "column_break_1cq96",
   "exit_date",
   "exit_amount",
-  "exit_charges",
   "net_exit_amount",
+  "exit_charges",
   "bank_account",
   "funds_credited_to",
   "create_exit_jv",
@@ -156,6 +156,12 @@
    "reqd": 1
   },
   {
+   "default": "0",
+   "fieldname": "manual_entry_amount",
+   "fieldtype": "Check",
+   "label": "Manual Entry Amount"
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "holding_account",
    "fieldtype": "Link",
@@ -269,30 +275,6 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "exit_qty",
-   "fieldtype": "Float",
-   "label": "Exit Qty",
-   "precision": "6"
-  },
-  {
-   "fieldname": "script",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Script ",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "investment_charges_account",
-   "fieldtype": "Link",
-   "label": "Investment Charges Account",
-   "options": "Account",
-   "read_only_depends_on": "eval:doc.docstatus == 1;",
-   "reqd": 1
-  },
-  {
-   "allow_on_submit": 1,
    "fieldname": "exit_amount",
    "fieldtype": "Float",
    "label": "Exit Amount",
@@ -360,22 +342,11 @@
    "no_copy": 1,
    "options": "Investment Portfolio",
    "print_hide": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "manual_entry_amount",
-   "fieldtype": "Check",
-   "label": "Manual Entry Amount"
   }
  ],
- "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
-<<<<<<< HEAD
- "modified": "2023-08-05 17:47:26.402775",
-=======
- "modified": "2023-09-05 03:08:53.139613",
->>>>>>> 45e7dbc0819140d3ac03cc29d11b48836a3b61ab
+ "modified": "2023-09-06 10:57:38.906986",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
