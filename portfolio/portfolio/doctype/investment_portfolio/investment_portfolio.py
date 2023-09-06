@@ -90,11 +90,12 @@ class InvestmentPortfolio(Document):
 				'credit_in_account_currency': (self.exit_qty*self.entry_price),
 				'cost_center':cost_center,
 			})
-			jv.append('accounts', {
-				'account': self.funds_credited_to,
-				'credit_in_account_currency': net,
-				'cost_center':cost_center,
-			})
+			if net != 0:
+				jv.append('accounts', {
+					'account': self.funds_credited_to,
+					'credit_in_account_currency': net,
+					'cost_center':cost_center,
+				})
 
 			jv.cheque_no = self.name
 			jv.cheque_date = self.exit_date
