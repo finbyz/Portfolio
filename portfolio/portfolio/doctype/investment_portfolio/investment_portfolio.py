@@ -138,7 +138,7 @@ class InvestmentPortfolio(Document):
 				})
 				jv.append('accounts', {
 					'account': self.funds_credited_to,
-					'credit_in_account_currency': (self.exit_amount-s),
+					'credit_in_account_currency': (self.exit_amount-calculated_exit_amount),
 					'cost_center':cost_center,
 				})
 			elif  self.exit_amount < calculated_exit_amount:
@@ -178,7 +178,7 @@ class InvestmentPortfolio(Document):
 				# v=self.net_exit_amount+ self.exit_charges
 				# jv.append('accounts', {
 				# 	'account': self.funds_credited_to,
-				# 	'debit_in_account_currency': (s-v)
+				# 	'debit_in_account_currency': (calculated_exit_amount-v)
 				# })
 
 				jv.append('accounts', {
