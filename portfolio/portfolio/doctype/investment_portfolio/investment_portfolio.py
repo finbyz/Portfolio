@@ -48,11 +48,10 @@ class InvestmentPortfolio(Document):
 	def on_submit(self):
 		self.set_status()
 		if not self.jv_of_entry:
-			self.create_row_entry_jv()	
+			self.create_row_entry_jv()
 		
 	def calculate_entry_amount(self):
-		if not self.manual_entry_amount:
-			self.entry_amount=self.qty*self.entry_price
+		self.entry_amount=self.qty*self.entry_price
 	
 	def calculate_exit_amount(self):
 		self.exit_amount=self.exit_price*self.exit_qty

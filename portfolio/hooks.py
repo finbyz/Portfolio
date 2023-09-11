@@ -10,6 +10,15 @@ app_license = "MIT"
 # Includes in <head>
 # ------------------
 
+fixtures = [{
+    "doctype": "Custom Field",
+        "filters": {
+            "module": ["in", ["Portfolio"]]
+            }
+    }
+]
+
+
 # include js, css files in header of desk.html
 # app_include_css = "/assets/portfolio/css/portfolio.css"
 # app_include_js = "/assets/portfolio/js/portfolio.js"
@@ -29,7 +38,10 @@ app_license = "MIT"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Journal Entry" : "public/js/journal_entry.js"}
+doctype_js = {
+	"Journal Entry" : "public/js/journal_entry.js",
+	"Company" : "public/js/company.js"
+	}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

@@ -2,10 +2,8 @@
 // For license information, please see license.txt
 frappe.ui.form.on('Investment Portfolio', {
 	total_value:function(frm){
-		if(!frm.doc.manual_entry_amount){
-         let total_price=frm.doc.qty*frm.doc.entry_price;
-		 cur_frm.set_value("entry_amount",total_price)
-		}
+		let total_price=frm.doc.qty*frm.doc.entry_price;
+		cur_frm.set_value("entry_amount",total_price)
 	},
 	qty:function(frm){
 		if(frm.doc.qty){
@@ -15,16 +13,24 @@ frappe.ui.form.on('Investment Portfolio', {
 		if(frm.doc.entry_price){
 		frm.trigger("total_value")
 	}},
-	manual_entry_amount:function(frm){
-		if(frm.doc.entry_price && frm.doc.qty && frm.doc.manual_entry_amount ==0){
-		frm.trigger("total_value")
-	}},	
 	cal_entry_charges:function(frm){
 		let entry_amount=frm.doc.entry_amount;
 		let total_cost_of_ownership=frm.doc.total_cost_of_ownership;
 		let total_entry_charges=flt(total_cost_of_ownership)-flt(entry_amount)
 		cur_frm.set_value("entry_charges",total_entry_charges)
 
+	},
+	entry_charges: function(frm) {
+		if (frm.doc.set_entry_charges_manually === 1) {
+			frm.set_value('total_cost_of_ownership', frm.doc.entry_amount + frm.doc.entry_charges);
+		}
+	},
+	set_entry_charges_manually:  function(frm) {
+		if (frm.doc.set_entry_charges_manually === 1) {
+			frm.set_df_property('entry_charges', 'read_only', 0);
+		} else {
+			frm.set_df_property('entry_charges', 'read_only', 1);
+		}
 	},
 	cal_exit_charges:function(frm){
 		let net=flt(frm.doc.exit_amount - frm.doc.net_exit_amount)
@@ -92,6 +98,25 @@ frappe.ui.form.on('Investment Portfolio', {
 		}
 	},
 	refresh:function(frm){
+		if (frm.doc.__islocal) {
+			frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'capital_account', 'investment_charges_account'],
+			function(value) {
+				frm.set_value('funds_debited_from', value.bank_account);
+				frm.set_value('holding_account', value.capital_account);
+				frm.set_value('investment_charges_account', value.investment_charges_account);
+			});
+		}
+		if (frm.doc.docstatus === 1) {
+			frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'investment_income_account'], 
+			function(value) {
+				if (!frm.doc.bank_account) {
+					frm.set_value('bank_account', value.bank_account);
+				}
+				if (!frm.doc.funds_credited_to) {
+					frm.set_value('funds_credited_to', value.investment_income_account);
+				}
+			});
+		}
 		frm.set_query("holding_account", function(doc) {
 			return {
 				"filters": {

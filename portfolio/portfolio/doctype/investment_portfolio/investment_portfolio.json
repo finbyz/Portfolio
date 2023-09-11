@@ -18,28 +18,28 @@
   "posting_date",
   "company",
   "is_existing",
+  "jv_of_entry",
   "entry_section_section",
   "qty",
   "entry_price",
-  "manual_entry_amount",
-  "holding_account",
-  "jv_of_entry",
-  "column_break_818hx",
   "entry_amount",
-  "total_cost_of_ownership",
+  "set_entry_charges_manually",
   "entry_charges",
+  "total_cost_of_ownership",
+  "column_break_818hx",
   "funds_debited_from",
+  "holding_account",
   "investment_charges_account",
   "exit_section_section",
-  "exit_price",
   "exit_qty",
+  "exit_price",
+  "exit_amount",
   "set_charges",
+  "exit_charges",
+  "net_exit_amount",
   "jv_of_exit",
   "column_break_1cq96",
   "exit_date",
-  "exit_amount",
-  "net_exit_amount",
-  "exit_charges",
   "bank_account",
   "funds_credited_to",
   "create_exit_jv",
@@ -50,11 +50,11 @@
  ],
  "fields": [
   {
-   "default": "IP/.company_series./.fiscal./",
+   "default": "IP-.####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "IP/.company_series./.fiscal./"
+   "options": "IP-.####"
   },
   {
    "fieldname": "segment",
@@ -156,12 +156,6 @@
    "reqd": 1
   },
   {
-   "default": "0",
-   "fieldname": "manual_entry_amount",
-   "fieldtype": "Check",
-   "label": "Manual Entry Amount"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "holding_account",
    "fieldtype": "Link",
@@ -206,8 +200,9 @@
    "fieldname": "entry_charges",
    "fieldtype": "Float",
    "label": "Entry Charges",
+   "mandatory_depends_on": "set_entry_charges_manually",
    "read_only": 1,
-   "read_only_depends_on": "eval:doc.total_cost_of_ownership"
+   "read_only_depends_on": "eval:!doc.set_entry_charges_manually"
   },
   {
    "allow_on_submit": 1,
@@ -253,7 +248,7 @@
    "default": "0",
    "fieldname": "set_charges",
    "fieldtype": "Check",
-   "label": "Set Charges"
+   "label": "Set Exit Charges Manually"
   },
   {
    "allow_on_submit": 1,
@@ -342,11 +337,17 @@
    "no_copy": 1,
    "options": "Investment Portfolio",
    "print_hide": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "set_entry_charges_manually",
+   "fieldtype": "Check",
+   "label": "Set Entry Charges Manually"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2023-09-06 02:16:50.522733",
+ "modified": "2023-09-11 04:30:01.094763",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
