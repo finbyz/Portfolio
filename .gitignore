@@ -3,5 +3,5 @@
 *.egg-info
 *.swp
 tags
-portfolio/docs/current
+investment_portfolio/docs/current
 node_modules/
