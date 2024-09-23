@@ -1,5 +1,5 @@
-## Investment Portfolio
-Investment Portfolio is a specialized tool designed to help you keep track of your investments. It allows you to organize and manage various types of assets, such as stocks, bonds, mutual funds, equity, and exchange-traded funds, in one place. This app simplifies the process of monitoring and managing your investment portfolio.
+## Portfolio
+Portfolio is a specialized tool designed to help you keep track of your investments. It allows you to organize and manage various types of assets, such as stocks, bonds, mutual funds, equity, and exchange-traded funds, in one place. This app simplifies the process of monitoring and managing your investment portfolio.
 
 ## How to use the App
 
@@ -28,4 +28,4 @@ This process helps you add and manage your investments, and it automatically rec
 
 #### License
 
-MIT
+GPL-3.0 license
