@@ -101,22 +101,28 @@ frappe.ui.form.on('Investment Portfolio', {
 		if (frm.doc.__islocal) {
 			frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'capital_account', 'investment_charges_account'],
 			function(value) {
-				frm.set_value('funds_debited_from', value.bank_account);
-				frm.set_value('holding_account', value.capital_account);
-				frm.set_value('investment_charges_account', value.investment_charges_account);
-			});
-		}
-		if (frm.doc.docstatus === 1) {
-			frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'investment_income_account'], 
-			function(value) {
-				if (!frm.doc.bank_account) {
-					frm.set_value('bank_account', value.bank_account);
+				if(value.bank_account){
+					frm.set_value('funds_debited_from', value.bank_account);
 				}
-				if (!frm.doc.funds_credited_to) {
-					frm.set_value('funds_credited_to', value.investment_income_account);
+				if(value.capital_account){
+					frm.set_value('holding_account', value.capital_account);
+				}
+				if(value.investment_charges_account){
+					frm.set_value('investment_charges_account', value.investment_charges_account);
 				}
 			});
 		}
+		// if (frm.doc.docstatus === 1) {
+		// 	frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'investment_income_account'], 
+		// 	function(value) {
+		// 		if (!frm.doc.bank_account) {
+		// 			frm.set_value('bank_account', value.bank_account);
+		// 		}
+		// 		if (!frm.doc.funds_credited_to) {
+		// 			frm.set_value('funds_credited_to', value.investment_income_account);
+		// 		}
+		// 	});
+		// }
 		frm.set_query("holding_account", function(doc) {
 			return {
 				"filters": {

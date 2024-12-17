@@ -21,7 +21,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-19 10:17:47.040218",
+ "modified": "2024-12-17 17:18:57.583856",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Category",
@@ -39,6 +39,23 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
   }
  ],
  "quick_entry": 1,
