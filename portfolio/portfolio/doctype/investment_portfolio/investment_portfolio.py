@@ -63,7 +63,7 @@ class InvestmentPortfolio(Document):
 	def create_row_exit_jv(self):
 		if not self.bank_account:
 			frappe.throw("Bank Account is compulsory")
-		if self.net_exit_amount > self.exit_amount:
+		if flt(self.net_exit_amount, 2) > flt(self.exit_amount, 2):
 			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")
 		
 		cost_center = erpnext.get_default_cost_center(self.company)

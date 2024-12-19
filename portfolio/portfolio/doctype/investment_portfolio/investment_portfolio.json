@@ -271,14 +271,14 @@
   {
    "allow_on_submit": 1,
    "fieldname": "exit_amount",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Exit Amount",
    "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "net_exit_amount",
-   "fieldtype": "Float",
+   "fieldtype": "Currency",
    "label": "Net Exit Amount"
   },
   {
@@ -347,7 +347,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2023-09-11 04:30:01.094763",
+ "modified": "2024-12-19 11:16:39.784908",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
