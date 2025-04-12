@@ -15,7 +15,6 @@ class InvestmentPortfolio(Document):
 		
 	def on_update_after_submit(self):
 		self.calculate_pending_qty()
-		self.set_status()
 
 	def on_cancel(self):
 		self.set_status()
@@ -33,14 +32,12 @@ class InvestmentPortfolio(Document):
 		if self.docstatus == 0:
 			self.status = "Draft"
 		if self.docstatus == 1:
-			print(self.pending_qty)
-			print(self.qty)
+			if self.pending_qty == 0:
+				self.status="Exited"
 			if self.pending_qty==self.qty:
 				self.status="Holding"
 			if self.qty!=self.pending_qty:
 				self.status="Partially Exited"
-			if self.pending_qty == 0:
-				self.status="Exited"
 		if self.docstatus ==2:
 			self.status = "Cancelled"
 		
@@ -256,6 +253,7 @@ class InvestmentPortfolio(Document):
 			for row1 in self.investment_portfolio_segment:
 				total+=flt(row1.exit_qty)
 			self.pending_qty=self.qty-total
+		self.set_status()
 
 	def cancel_jv(self):
 		if self.jv_of_entry:
