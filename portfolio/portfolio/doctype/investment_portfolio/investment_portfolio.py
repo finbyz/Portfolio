@@ -12,6 +12,11 @@ class InvestmentPortfolio(Document):
 	def validate(self):
 		self.calculate_entry_amount()
 		self.calculate_pending_qty()
+		self.calculate_post_split_qty()
+	
+	def calculate_post_split_qty(self):
+		if self.split_ratio:
+			self.post_split_qty = flt(self.qty) * flt(self.split_ratio)
 		
 	def on_update_after_submit(self):
 		self.calculate_pending_qty()
@@ -21,6 +26,29 @@ class InvestmentPortfolio(Document):
 		self.set_status()
 		self.cancel_jv()
 	
+	# def before_cancel(self):
+	# 	self.unlink_split_children()
+
+	# def unlink_split_children(self):
+	# 	child_names = frappe.get_all(
+	# 		"Investment Portfolio",
+	# 		filters={"split_from": self.name},
+	# 		pluck="name"
+	# 	)
+	# 	if child_names:
+	# 		for child in child_names:
+	# 			frappe.db.set_value(
+	# 				"Investment Portfolio",
+	# 				child,
+	# 				{
+	# 					"split_from": None,
+	# 					"jv_of_entry": None,
+	# 				},
+	# 				update_modified=False,
+	# 			)
+	# 		self.flags.was_split = True
+
+	# 	self.flags.ignore_links = True
 
 	def on_update(self):
 		self.set_status()
@@ -43,6 +71,25 @@ class InvestmentPortfolio(Document):
 				self.status="Exited"
 		if self.docstatus ==2:
 			self.status = "Cancelled"
+   
+	def set_status(self):
+		if self.docstatus == 0:
+			status = "Draft"
+		elif self.docstatus == 1:
+			if self.pending_qty == self.qty:
+				status = "Holding"
+			elif self.pending_qty == 0:
+				status = "Exited"
+			else:
+				status = "Partially Exited"
+		elif self.docstatus == 2:
+			status = "Cancelled"
+		else:
+			status = self.status
+
+		if self.status != status:
+			self.db_set("status", status, update_modified=False)
+			self.status = status
 		
 		
 	def on_submit(self):
@@ -281,3 +328,132 @@ def create_exit(exit_price ,exit_qty , exit_date , exit_amount ,net_exit_amount 
 	doc.exit_amount=0
 	doc.net_exit_amount=0
 	doc.save()	
+ 
+@frappe.whitelist()
+def get_bonus_scripts():
+	return frappe.get_all(
+		"Investment Portfolio",
+		filters={"status": "Holding", "docstatus": 1},
+		pluck="script",
+		distinct=True
+	)
+
+
+@frappe.whitelist()
+def get_holding_qty(script, date=None):
+	filters = {"script": script, "status": "Holding", "docstatus": 1}
+	if date:
+		filters["posting_date"] = ["<=", date]
+	result = frappe.db.get_list(
+		"Investment Portfolio",
+		filters=filters,
+		fields=["sum(qty) as total_qty"]
+	)
+	return flt(result[0].total_qty) if result else 0
+
+
+@frappe.whitelist()
+def apply_bonus(script, ratio, bonus_date, date=None):
+	ratio = flt(ratio)
+	if ratio <= 0:
+		frappe.throw(_("Ratio must be greater than 0"))
+	if not bonus_date:
+		frappe.throw(_("Bonus Date is mandatory"))
+
+	filters = {"script": script, "status": "Holding", "docstatus": 1}
+	if date:
+		filters["posting_date"] = ["<=", date]
+
+	docs = frappe.get_all(
+		"Investment Portfolio",
+		filters=filters,
+		fields=["name", "qty", "entry_amount"]
+	)
+	if not docs:
+		frappe.throw(_("No Holding documents found for Script {0}").format(script))
+
+	updated = []
+	for row in docs:
+		old_qty = flt(row.qty)
+		post_bonus_qty = old_qty + (old_qty * ratio)
+		new_entry_price = flt(row.entry_amount) / post_bonus_qty
+
+		doc = frappe.get_doc("Investment Portfolio", row.name)
+		doc.db_set("old_qty", old_qty, update_modified=True)
+		doc.db_set("ratio", ratio, update_modified=True)
+		doc.db_set("post_bonus_qty", post_bonus_qty, update_modified=True)
+		doc.db_set("bonus_date", bonus_date, update_modified=True)
+		doc.db_set("qty", post_bonus_qty, update_modified=True)
+		doc.db_set("pending_qty", post_bonus_qty, update_modified=True)
+		doc.db_set("entry_price", new_entry_price, update_modified=True)
+		updated.append(row.name)
+
+	return updated
+
+
+        
+@frappe.whitelist()
+def process_split(name):
+    doc = frappe.get_doc("Investment Portfolio", name)
+
+    if doc.docstatus != 1:
+        frappe.throw(_("Document must be submitted before Split"))
+    if doc.status != "Holding":
+        frappe.throw(_("Split can only be done when status is Holding"))
+    if not doc.investment_portfolio_split:
+        frappe.throw(_("Add at least one row in Investment Split table"))
+    if not doc.split_ratio:
+        frappe.throw(_("Split Ratio is mandatory"))
+
+    total_split_amount = 0
+    total_split_qty = 0
+    for row in doc.investment_portfolio_split:
+        if not row.script or not flt(row.qty) or not flt(row.per_share_price):
+            frappe.throw(_("Row {0}: Script, Qty and Per Share Price are mandatory").format(row.idx))
+        row.amount = flt(row.qty) * flt(row.per_share_price)
+        total_split_amount += row.amount
+        total_split_qty += flt(row.qty)
+
+    if flt(total_split_amount, 2) != flt(doc.entry_amount, 2):
+        frappe.throw(
+            _("Total Split Amount ({0}) must equal Entry Amount ({1})").format(
+                flt(total_split_amount, 2), flt(doc.entry_amount, 2)
+            )
+        )
+
+    expected_qty = flt(doc.qty) * flt(doc.split_ratio)
+    if flt(total_split_qty, 4) != flt(expected_qty, 4):
+        frappe.throw(
+            _("Total Split Qty ({0}) must equal Qty After Split ({1})").format(
+                total_split_qty, expected_qty
+            )
+        )
+
+    new_docs = []
+    for row in doc.investment_portfolio_split:
+        new_doc = frappe.new_doc("Investment Portfolio")
+        new_doc.segment = doc.segment
+        new_doc.category = doc.category
+        new_doc.script = row.script
+        new_doc.company = doc.company
+        new_doc.posting_date = nowdate()
+        new_doc.qty = row.qty
+        new_doc.entry_price = row.per_share_price
+        new_doc.holding_account = doc.holding_account
+        new_doc.funds_debited_from = doc.funds_debited_from
+        new_doc.investment_charges_account = doc.investment_charges_account
+        new_doc.total_cost_of_ownership = row.amount
+        new_doc.is_existing = 1
+        new_doc.jv_of_entry = doc.jv_of_entry
+        new_doc.split_from = doc.name
+        new_doc.save()
+        new_doc.reload()
+        new_doc.submit()
+        new_doc.db_set("status", "Holding", update_modified=False)
+
+        new_docs.append(new_doc.name)
+
+    doc.db_set("pending_qty", 0)
+    doc.db_set("status", "Exited")
+
+    return new_docs

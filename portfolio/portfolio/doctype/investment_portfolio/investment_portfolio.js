@@ -60,6 +60,34 @@ frappe.ui.form.on('Investment Portfolio', {
 			frm.trigger("total_values")}
 	},
 
+	split_ratio: function(frm) {
+		if (frm.doc.split_ratio) {
+			frm.set_value("post_split_qty", flt(frm.doc.qty) * flt(frm.doc.split_ratio));
+		}
+	},
+
+	split: function(frm) {
+		frappe.confirm(
+			__("This will mark the document as Exited and create new Investment Portfolio document(s) for each row. Continue?"),
+			function() {
+				frappe.call({
+					method: "portfolio.portfolio.doctype.investment_portfolio.investment_portfolio.process_split",
+					args: { name: frm.doc.name },
+					freeze: true,
+					freeze_message: __("Processing Split..."),
+					callback: function(r) {
+						if (r.message) {
+							frappe.msgprint(
+								__("Created: {0}", [r.message.map(d => frappe.utils.get_form_link("Investment Portfolio", d, true)).join(", ")])
+							);
+						}
+						frm.reload_doc();
+					}
+				});
+			}
+		);
+	},
+
 	onload:function(frm){
 		if(frm.doc.docstatus == 0 && frm.doc.is_existing == 0){
 			frm.set_value("jv_of_entry","")
@@ -110,10 +138,12 @@ frappe.ui.form.on('Investment Portfolio', {
 			frappe.db.get_value("Company", {"name": frm.doc.company}, ['bank_account', 'investment_income_account'], 
 			function(value) {
 				if (!frm.doc.bank_account) {
-					frm.set_value('bank_account', value.bank_account);
+					frm.doc.bank_account = value.bank_account;
+					frm.refresh_field('bank_account');
 				}
 				if (!frm.doc.funds_credited_to) {
-					frm.set_value('funds_credited_to', value.investment_income_account);
+					frm.doc.funds_credited_to = value.investment_income_account;
+					frm.refresh_field('funds_credited_to');
 				}
 			});
 		}
@@ -225,7 +255,20 @@ frappe.ui.form.on('Investment Portfolio', {
 });
 
 
-		
+frappe.ui.form.on('Investment Portfolio Split', {
+    qty: function(frm, cdt, cdn) {
+        calculate_split_row_amount(frm, cdt, cdn);
+    },
+    per_share_price: function(frm, cdt, cdn) {
+        calculate_split_row_amount(frm, cdt, cdn);
+    }
+});
+
+function calculate_split_row_amount(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    row.amount = flt(row.qty) * flt(row.per_share_price);
+    frm.refresh_field("investment_portfolio_split");
+}
 
 
 
