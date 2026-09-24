@@ -1,15 +1,13 @@
 // Copyright (c) 2026, finbyz and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Scrip-wise Ledger Statement"] = {
+frappe.query_reports["Script-Wise Trade Book Report"] = {
 	"filters": [
 		{
 			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
-			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
+			"options": "Company"
 		},
 		{
 			"fieldname": "from_date",
@@ -48,13 +46,12 @@ frappe.query_reports["Scrip-wise Ledger Statement"] = {
 			"label": __("Capital Account"),
 			"fieldtype": "Link",
 			"options": "Account",
-			"get_query": function() {
+			"get_query": function () {
 				var company = frappe.query_report.get_filter_value("company");
+				var filters = { is_group: 0 };
+				if (company) filters.company = company;
 				return {
-					filters: {
-						company: company,
-						is_group: 0
-					}
+					filters: filters
 				};
 			}
 		},
@@ -63,7 +60,7 @@ frappe.query_reports["Scrip-wise Ledger Statement"] = {
 			"label": __("Investment Portfolio"),
 			"fieldtype": "Link",
 			"options": "Investment Portfolio",
-			"get_query": function() {
+			"get_query": function () {
 				var company = frappe.query_report.get_filter_value("company");
 				var script = frappe.query_report.get_filter_value("script");
 				var filters = { docstatus: 1 };
@@ -74,7 +71,7 @@ frappe.query_reports["Scrip-wise Ledger Statement"] = {
 		}
 	],
 
-	"formatter": function(value, row, column, data, default_formatter) {
+	"formatter": function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
 		if (column.fieldname === "transaction_type") {

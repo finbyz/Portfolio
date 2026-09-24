@@ -16,7 +16,8 @@ class InvestmentPortfolio(Document):
 	
 	def calculate_post_split_qty(self):
 		if self.split_ratio:
-			self.post_split_qty = flt(self.qty) * flt(self.split_ratio)
+			base_qty = flt(self.pending_qty) if (self.docstatus == 1 and flt(self.pending_qty) > 0) else flt(self.qty)
+			self.post_split_qty = base_qty * flt(self.split_ratio)
 		
 	def on_update_after_submit(self):
 		self.calculate_pending_qty()
@@ -56,22 +57,6 @@ class InvestmentPortfolio(Document):
 			self.jv_of_entry = None
 			self.jv_of_exit = None
 
-
-	def set_status(self):
-		if self.docstatus == 0:
-			self.status = "Draft"
-		if self.docstatus == 1:
-			print(self.pending_qty)
-			print(self.qty)
-			if self.pending_qty==self.qty:
-				self.status="Holding"
-			if self.qty!=self.pending_qty:
-				self.status="Partially Exited"
-			if self.pending_qty == 0:
-				self.status="Exited"
-		if self.docstatus ==2:
-			self.status = "Cancelled"
-   
 	def set_status(self):
 		if self.docstatus == 0:
 			status = "Draft"
@@ -333,7 +318,7 @@ def create_exit(exit_price ,exit_qty , exit_date , exit_amount ,net_exit_amount 
 def get_bonus_scripts():
 	return frappe.get_all(
 		"Investment Portfolio",
-		filters={"status": "Holding", "docstatus": 1},
+		filters={"status": ["in", ["Holding", "Partially Exited"]], "pending_qty": [">", 0], "docstatus": 1},
 		pluck="script",
 		distinct=True
 	)
@@ -341,15 +326,15 @@ def get_bonus_scripts():
 
 @frappe.whitelist()
 def get_holding_qty(script, date=None):
-	filters = {"script": script, "status": "Holding", "docstatus": 1}
+	filters = {"script": script, "status": ["in", ["Holding", "Partially Exited"]], "pending_qty": [">", 0], "docstatus": 1}
 	if date:
 		filters["posting_date"] = ["<=", date]
-	result = frappe.db.get_list(
+	pending_qtys = frappe.get_all(
 		"Investment Portfolio",
 		filters=filters,
-		fields=["sum(qty) as total_qty"]
+		pluck="pending_qty"
 	)
-	return flt(result[0].total_qty) if result else 0
+	return sum([flt(q) for q in pending_qtys])
 
 
 @frappe.whitelist()
@@ -360,50 +345,56 @@ def apply_bonus(script, ratio, bonus_date, date=None):
 	if not bonus_date:
 		frappe.throw(_("Bonus Date is mandatory"))
 
-	filters = {"script": script, "status": "Holding", "docstatus": 1}
+	filters = {"script": script, "status": ["in", ["Holding", "Partially Exited"]], "pending_qty": [">", 0], "docstatus": 1}
 	if date:
 		filters["posting_date"] = ["<=", date]
 
 	docs = frappe.get_all(
 		"Investment Portfolio",
 		filters=filters,
-		fields=["name", "qty", "entry_amount"]
+		fields=["name", "qty", "pending_qty", "entry_amount", "entry_price", "status"]
 	)
 	if not docs:
-		frappe.throw(_("No Holding documents found for Script {0}").format(script))
+		frappe.throw(_("No Holding or Partially Exited documents found for Script {0}").format(script))
 
 	updated = []
 	for row in docs:
-		old_qty = flt(row.qty)
-		post_bonus_qty = old_qty + (old_qty * ratio)
-		new_entry_price = flt(row.entry_amount) / post_bonus_qty
-
 		doc = frappe.get_doc("Investment Portfolio", row.name)
-		doc.db_set("old_qty", old_qty, update_modified=True)
+		current_pending_qty = flt(doc.pending_qty)
+		bonus_shares = current_pending_qty * ratio
+		new_pending_qty = current_pending_qty + bonus_shares
+		new_total_qty = flt(doc.qty) + bonus_shares
+		new_entry_price = flt(doc.entry_price) / (1.0 + ratio)
+
+		doc.db_set("old_qty", flt(doc.qty), update_modified=True)
+		doc.db_set("old_pending_qty", current_pending_qty, update_modified=True)
 		doc.db_set("ratio", ratio, update_modified=True)
-		doc.db_set("post_bonus_qty", post_bonus_qty, update_modified=True)
+		doc.db_set("post_bonus_qty", new_total_qty, update_modified=True)
 		doc.db_set("bonus_date", bonus_date, update_modified=True)
-		doc.db_set("qty", post_bonus_qty, update_modified=True)
-		doc.db_set("pending_qty", post_bonus_qty, update_modified=True)
+		doc.db_set("qty", new_total_qty, update_modified=True)
+		doc.db_set("pending_qty", new_pending_qty, update_modified=True)
 		doc.db_set("entry_price", new_entry_price, update_modified=True)
+		doc.set_status()
 		updated.append(row.name)
 
 	return updated
 
 
-        
 @frappe.whitelist()
 def process_split(name):
     doc = frappe.get_doc("Investment Portfolio", name)
 
     if doc.docstatus != 1:
         frappe.throw(_("Document must be submitted before Split"))
-    if doc.status != "Holding":
-        frappe.throw(_("Split can only be done when status is Holding"))
+    if doc.status not in ["Holding", "Partially Exited"]:
+        frappe.throw(_("Split can only be done when status is Holding or Partially Exited"))
     if not doc.investment_portfolio_split:
         frappe.throw(_("Add at least one row in Investment Split table"))
     if not doc.split_ratio:
         frappe.throw(_("Split Ratio is mandatory"))
+
+    base_qty = flt(doc.pending_qty) if flt(doc.pending_qty) > 0 else flt(doc.qty)
+    base_amount = base_qty * flt(doc.entry_price)
 
     total_split_amount = 0
     total_split_qty = 0
@@ -414,14 +405,14 @@ def process_split(name):
         total_split_amount += row.amount
         total_split_qty += flt(row.qty)
 
-    if flt(total_split_amount, 2) != flt(doc.entry_amount, 2):
+    if flt(total_split_amount, 2) != flt(base_amount, 2):
         frappe.throw(
-            _("Total Split Amount ({0}) must equal Entry Amount ({1})").format(
-                flt(total_split_amount, 2), flt(doc.entry_amount, 2)
+            _("Total Split Amount ({0}) must equal Remaining Entry Amount ({1})").format(
+                flt(total_split_amount, 2), flt(base_amount, 2)
             )
         )
 
-    expected_qty = flt(doc.qty) * flt(doc.split_ratio)
+    expected_qty = base_qty * flt(doc.split_ratio)
     if flt(total_split_qty, 4) != flt(expected_qty, 4):
         frappe.throw(
             _("Total Split Qty ({0}) must equal Qty After Split ({1})").format(

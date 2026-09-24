@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "naming_series:",
- "creation": "2023-05-18 10:31:45.213227",
+ "creation": "2026-09-24 15:05:39.811867",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -59,8 +59,9 @@
   "create_exit_jv",
   "account_section_section",
   "investment_portfolio_segment",
+  "amended_from",
   "pending_qty",
-  "amended_from"
+  "old_pending_qty"
  ],
  "fields": [
   {
@@ -380,6 +381,13 @@
    "read_only": 1
   },
   {
+   "fieldname": "old_pending_qty",
+   "fieldtype": "Float",
+   "label": "Old Pending Qty",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
    "fieldname": "split__investment_portfolio",
    "fieldtype": "Link",
    "label": "Split Investment Portfolio",
@@ -449,7 +457,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-15 22:50:49.576113",
+ "modified": "2026-09-24 15:42:13.593830",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",

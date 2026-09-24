@@ -1,24 +1,26 @@
 {
- "add_total_row": 0,
+ "add_total_row": 1,
  "add_translate_data": 0,
  "columns": [],
- "creation": "2026-09-17 15:17:33.570262",
+ "creation": "2026-09-21 15:03:10.480701",
+ "disable_prepared_report_automation": 0,
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
+ "doctype_to_sync": [],
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "letter_head": "",
- "letterhead": null,
- "modified": "2026-09-17 15:25:26.043173",
+ "letter_head": null,
+ "modified": "2026-09-24 07:31:12.166801",
  "modified_by": "Administrator",
  "module": "Portfolio",
- "name": "Scrip-wise Balance Statement",
+ "name": "Script-Wise Trade Book Report",
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Investment Portfolio",
- "report_name": "Scrip-wise Balance Statement",
+ "reference_report": "",
+ "report_name": "Script-Wise Trade Book Report",
  "report_type": "Script Report",
  "roles": [
   {
@@ -31,5 +33,6 @@
    "role": "Accounts User"
   }
  ],
+ "snapshot_report": 0,
  "timeout": 0
 }

@@ -22,6 +22,13 @@ def get_columns(filters):
 	currency = get_company_currency(filters.get("company"))
 	return [
 		{
+			"label": _("Company"),
+			"fieldname": "company",
+			"fieldtype": "Link",
+			"options": "Company",
+			"width": 160,
+		},
+		{
 			"label": _("Script"),
 			"fieldname": "script",
 			"fieldtype": "Link",
@@ -35,104 +42,25 @@ def get_columns(filters):
 			"width": 160,
 		},
 		{
-			"label": _("Action"),
-			"fieldname": "action",
-			"fieldtype": "Data",
-			"width": 90,
-		},
-		{
-			"label": _("Company"),
-			"fieldname": "company",
-			"fieldtype": "Link",
-			"options": "Company",
-			"width": 130,
-		},
-		{
 			"label": _("Segment"),
 			"fieldname": "segment",
 			"fieldtype": "Link",
 			"options": "Investment Segment",
-			"width": 120,
+			"width": 130,
 		},
 		{
 			"label": _("Category"),
 			"fieldname": "category",
 			"fieldtype": "Link",
 			"options": "Category",
-			"width": 110,
-		},
-		{
-			"label": _("Opening Qty"),
-			"fieldname": "opening_qty",
-			"fieldtype": "Float",
-			"precision": 4,
-			"width": 100,
-		},
-		{
-			"label": _("Opening Rate"),
-			"fieldname": "opening_rate",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"precision": 4,
-			"width": 105,
-		},
-		{
-			"label": _("Opening Value"),
-			"fieldname": "opening_val",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"width": 115,
-		},
-		{
-			"label": _("In Qty"),
-			"fieldname": "in_qty",
-			"fieldtype": "Float",
-			"precision": 4,
-			"width": 95,
-		},
-		{
-			"label": _("In Rate"),
-			"fieldname": "in_rate",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"precision": 4,
-			"width": 105,
-		},
-		{
-			"label": _("In Value"),
-			"fieldname": "in_val",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"width": 115,
-		},
-		{
-			"label": _("Out Qty"),
-			"fieldname": "out_qty",
-			"fieldtype": "Float",
-			"precision": 4,
-			"width": 95,
-		},
-		{
-			"label": _("Out Rate"),
-			"fieldname": "out_rate",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"precision": 4,
-			"width": 105,
-		},
-		{
-			"label": _("Out Value"),
-			"fieldname": "out_val",
-			"fieldtype": "Currency",
-			"options": "currency",
-			"width": 115,
+			"width": 120,
 		},
 		{
 			"label": _("Balance Qty"),
 			"fieldname": "bal_qty",
 			"fieldtype": "Float",
 			"precision": 4,
-			"width": 105,
+			"width": 120,
 		},
 		{
 			"label": _("Valuation / Avg Rate"),
@@ -140,20 +68,14 @@ def get_columns(filters):
 			"fieldtype": "Currency",
 			"options": "currency",
 			"precision": 4,
-			"width": 130,
+			"width": 150,
 		},
 		{
 			"label": _("Balance Value"),
 			"fieldname": "bal_val",
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 125,
-		},
-		{
-			"label": _("Active Holdings"),
-			"fieldname": "active_holdings",
-			"fieldtype": "Int",
-			"width": 95,
+			"width": 160,
 		},
 		{
 			"label": _("Currency"),
@@ -167,7 +89,6 @@ def get_columns(filters):
 
 def get_data(filters):
 	company_currency = get_company_currency(filters.get("company"))
-	from_date = getdate(filters.get("from_date")) if filters.get("from_date") else None
 	to_date = getdate(filters.get("to_date")) if filters.get("to_date") else None
 	show_zero_balance = filters.get("show_zero_balance")
 
@@ -180,7 +101,7 @@ def get_data(filters):
 
 	for row in all_raw_entries:
 		scrip = row.get("script") or "Unknown"
-		comp = row.get("company") or filters.get("company")
+		comp = row.get("company") or filters.get("company") or ""
 		key = (comp, scrip)
 		grouped_entries.setdefault(key, []).append(row)
 
@@ -197,12 +118,10 @@ def get_data(filters):
 			metadata_by_key[key]["active_holdings"].add(row.get("voucher_no"))
 
 	data = []
-	total_opening_val = 0.0
 	total_in_val = 0.0
 	total_out_val = 0.0
 	total_bal_qty = 0.0
 	total_bal_val = 0.0
-	total_realized_pnl = 0.0
 	active_scrips_count = 0
 
 	for key in sorted(grouped_entries.keys(), key=lambda x: (x[0] or "", x[1] or "")):
@@ -223,18 +142,14 @@ def get_data(filters):
 		running_val = 0.0
 		avg_rate = 0.0
 
-		opening_qty = 0.0
-		opening_val = 0.0
-		opening_rate = 0.0
-
-		period_in_qty = 0.0
-		period_in_val = 0.0
-		period_out_qty = 0.0
-		period_out_val = 0.0
-		period_realized_pnl = 0.0
+		scrip_in_val = 0.0
+		scrip_out_val = 0.0
 
 		for entry in entries:
 			e_date = getdate(entry.get("posting_date")) if entry.get("posting_date") else None
+			if to_date and e_date and e_date > to_date:
+				continue
+
 			in_qty = flt(entry.get("in_qty"))
 			in_rate = flt(entry.get("in_rate"))
 			in_amt = flt(entry.get("in_amount")) or (in_qty * in_rate)
@@ -242,53 +157,38 @@ def get_data(filters):
 			out_qty = flt(entry.get("out_qty"))
 			out_rate = flt(entry.get("out_rate"))
 			out_amt = flt(entry.get("out_amount")) or (out_qty * out_rate)
-			net_exit_amount = flt(entry.get("net_exit_amount") or out_amt)
+			cost_amt = flt(entry.get("cost_amount")) or (out_qty * flt(entry.get("entry_price")))
 
-			# Valuation before updating
+			# Valuation update
 			if in_qty > 0:
 				running_qty += in_qty
 				running_val += in_amt
 				avg_rate = running_val / running_qty if running_qty > 0 else 0.0
+				scrip_in_val += in_amt
 			elif out_qty > 0:
-				cost_basis = out_qty * avg_rate
-				pnl = net_exit_amount - cost_basis
+				cost_basis = cost_amt if cost_amt > 0 else (out_qty * avg_rate)
 				running_qty -= out_qty
 				if running_qty <= 0.00001:
 					running_qty = 0.0
 					running_val = 0.0
 					avg_rate = 0.0
 				else:
-					running_val -= out_amt
+					running_val -= cost_basis
 					if running_val < 0:
 						running_val = 0.0
 					avg_rate = running_val / running_qty if running_qty > 0 else 0.0
+				scrip_out_val += out_amt
 
-			# Categorize by time period
-			if from_date and e_date and e_date < from_date:
-				opening_qty = running_qty
-				opening_val = running_val
-				opening_rate = avg_rate
-			elif (not to_date) or (e_date and e_date <= to_date):
-				if in_qty > 0:
-					period_in_qty += in_qty
-					period_in_val += in_amt
-				elif out_qty > 0:
-					period_out_qty += out_qty
-					period_out_val += out_amt
-					period_realized_pnl += pnl
-
-		# Final balance calculation for period
+		# Final balance calculation till to_date
 		bal_qty = running_qty
 		bal_val = running_val
 		bal_rate = avg_rate
 
-		in_rate = (period_in_val / period_in_qty) if period_in_qty > 0 else 0.0
-		out_rate = (period_out_val / period_out_qty) if period_out_qty > 0 else 0.0
-		opening_rate = (opening_val / opening_qty) if opening_qty > 0 else 0.0
-
 		# Check if we should display this scrip
-		if not show_zero_balance and bal_qty <= 0.00001 and period_in_qty <= 0.00001 and period_out_qty <= 0.00001:
+		if not show_zero_balance and bal_qty <= 0.00001:
 			continue
+
+		row_currency = get_company_currency(comp) if comp else company_currency
 
 		row = {
 			"script": scrip,
@@ -297,27 +197,17 @@ def get_data(filters):
 			"company": comp,
 			"segment": meta.get("segment"),
 			"category": meta.get("category"),
-			"opening_qty": opening_qty if opening_qty else 0.0,
-			"opening_rate": opening_rate if opening_qty else 0.0,
-			"opening_val": opening_val if opening_qty else 0.0,
-			"in_qty": period_in_qty if period_in_qty else 0.0,
-			"in_rate": in_rate if period_in_qty else 0.0,
-			"in_val": period_in_val if period_in_qty else 0.0,
-			"out_qty": period_out_qty if period_out_qty else 0.0,
-			"out_rate": out_rate if period_out_qty else 0.0,
-			"out_val": period_out_val if period_out_qty else 0.0,
 			"bal_qty": bal_qty,
 			"bal_rate": bal_rate,
 			"bal_val": bal_val,
 			"active_holdings": len(meta.get("active_holdings", [])),
-			"currency": company_currency,
+			"currency": row_currency,
 		}
 
 		data.append(row)
 
-		total_opening_val += opening_val
-		total_in_val += period_in_val
-		total_out_val += period_out_val
+		total_in_val += scrip_in_val
+		total_out_val += scrip_out_val
 		total_bal_qty += bal_qty
 		total_bal_val += bal_val
 		if bal_qty > 0:
@@ -325,10 +215,9 @@ def get_data(filters):
 
 	report_summary = [
 		{
-			"value": total_bal_val,
-			"label": _("Total Holding Value"),
-			"datatype": "Currency",
-			"currency": company_currency,
+			"value": active_scrips_count,
+			"label": _("Total Script"),
+			"datatype": "Int",
 		},
 		{
 			"value": total_bal_qty,
@@ -337,22 +226,23 @@ def get_data(filters):
 			"precision": 4,
 		},
 		{
-			"value": active_scrips_count,
-			"label": _("Active Scrips Count"),
-			"datatype": "Int",
-		},
-		{
-			"value": total_in_val,
-			"label": _("Total Inward Value"),
+			"value": total_bal_val,
+			"label": _("Total Investment Value"),
 			"datatype": "Currency",
 			"currency": company_currency,
 		},
-		{
-			"value": total_out_val,
-			"label": _("Total Outward Value"),
-			"datatype": "Currency",
-			"currency": company_currency,
-		},
+		# {
+		# 	"value": total_in_val,
+		# 	"label": _("Total Inward Value"),
+		# 	"datatype": "Currency",
+		# 	"currency": company_currency,
+		# },
+		# {
+		# 	"value": total_out_val,
+		# 	"label": _("Total Outward Value"),
+		# 	"datatype": "Currency",
+		# 	"currency": company_currency,
+		# },
 	]
 
 	return data, report_summary
@@ -382,6 +272,16 @@ def get_all_raw_transactions(filters):
 
 	where_clause = " AND ".join(conditions)
 
+	to_date_inward_cond = ""
+	to_date_exit_cond = ""
+	to_date_split_cond = ""
+
+	if filters.get("to_date"):
+		query_params["to_date"] = filters.get("to_date")
+		to_date_inward_cond = " AND p.posting_date <= %(to_date)s"
+		to_date_exit_cond = " AND s.exit_date <= %(to_date)s"
+		to_date_split_cond = " AND DATE(p.modified) <= %(to_date)s"
+
 	# 1. Inward Purchases
 	inward_query = f"""
 		SELECT
@@ -392,6 +292,8 @@ def get_all_raw_transactions(filters):
 			p.company,
 			p.segment,
 			p.category,
+			p.entry_price AS entry_price,
+			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			p.qty AS in_qty,
 			p.entry_price AS in_rate,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS in_amount,
@@ -400,7 +302,7 @@ def get_all_raw_transactions(filters):
 			0.0 AS out_amount,
 			1 AS is_inward
 		FROM `tabInvestment Portfolio` p
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_inward_cond}
 	"""
 	inwards = frappe.db.sql(inward_query, query_params, as_dict=True)
 	entries.extend(inwards)
@@ -415,6 +317,8 @@ def get_all_raw_transactions(filters):
 			p.company,
 			p.segment,
 			p.category,
+			p.entry_price AS entry_price,
+			COALESCE(s.exit_qty * p.entry_price, 0.0) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
@@ -425,7 +329,7 @@ def get_all_raw_transactions(filters):
 			0 AS is_inward
 		FROM `tabInvestment Portfolio Segment` s
 		INNER JOIN `tabInvestment Portfolio` p ON s.parent = p.name
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_exit_cond}
 	"""
 	exits = frappe.db.sql(exit_query, query_params, as_dict=True)
 	entries.extend(exits)
@@ -440,6 +344,8 @@ def get_all_raw_transactions(filters):
 			p.company,
 			p.segment,
 			p.category,
+			p.entry_price AS entry_price,
+			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
@@ -449,7 +355,7 @@ def get_all_raw_transactions(filters):
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS net_exit_amount,
 			0 AS is_inward
 		FROM `tabInvestment Portfolio` p
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_split_cond}
 			AND p.status = 'Exited'
 			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Split` sp WHERE sp.parent = p.name) > 0
 			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name) = 0

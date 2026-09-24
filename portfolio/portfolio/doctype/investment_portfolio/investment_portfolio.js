@@ -62,7 +62,10 @@ frappe.ui.form.on('Investment Portfolio', {
 
 	split_ratio: function(frm) {
 		if (frm.doc.split_ratio) {
-			frm.set_value("post_split_qty", flt(frm.doc.qty) * flt(frm.doc.split_ratio));
+			let base_qty = (frm.doc.docstatus === 1 && frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
+				? flt(frm.doc.pending_qty)
+				: flt(frm.doc.qty);
+			frm.set_value("post_split_qty", base_qty * flt(frm.doc.split_ratio));
 		}
 	},
 

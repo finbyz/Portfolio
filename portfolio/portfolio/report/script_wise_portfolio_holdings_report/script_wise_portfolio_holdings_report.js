@@ -1,22 +1,28 @@
 // Copyright (c) 2026, finbyz and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Scrip-wise Balance Statement"] = {
+// frappe.query_reports["Script-Wise Portfolio Holdings Report"] = {
+// 	filters: [
+// 		// {
+// 		// 	"fieldname": "my_filter",
+// 		// 	"label": __("My Filter"),
+// 		// 	"fieldtype": "Data",
+// 		// 	"reqd": 1,
+// 		// },
+// 	],
+// };
+
+
+// Copyright (c) 2026, finbyz and contributors
+// For license information, please see license.txt
+
+frappe.query_reports["Script-Wise Portfolio Holdings Report"] = {
 	"filters": [
 		{
 			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
-			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
-		},
-		{
-			"fieldname": "from_date",
-			"label": __("From Date"),
-			"fieldtype": "Date",
-			"default": frappe.datetime.add_months(frappe.datetime.get_today(), -1),
-			"reqd": 1
+			"options": "Company"
 		},
 		{
 			"fieldname": "to_date",
@@ -51,9 +57,9 @@ frappe.query_reports["Scrip-wise Balance Statement"] = {
 		}
 	],
 
-	"onload": function(report) {
+	"onload": function (report) {
 		// Attach event listener for column-level Split buttons
-		report.page.main.off("click", ".btn-split-report").on("click", ".btn-split-report", function(e) {
+		report.page.main.off("click", ".btn-split-report").on("click", ".btn-split-report", function (e) {
 			e.preventDefault();
 			e.stopPropagation();
 			var script = $(this).attr("data-script");
@@ -62,7 +68,7 @@ frappe.query_reports["Scrip-wise Balance Statement"] = {
 		});
 	},
 
-	"formatter": function(value, row, column, data, default_formatter) {
+	"formatter": function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 
 		if (column.fieldname === "action") {
@@ -108,7 +114,7 @@ function open_split_dialog(script, company, report) {
 		},
 		freeze: true,
 		freeze_message: __("Fetching Holding Portfolios..."),
-		callback: function(r) {
+		callback: function (r) {
 			var portfolios = r.message || [];
 			if (!portfolios.length) {
 				frappe.msgprint({
@@ -122,7 +128,7 @@ function open_split_dialog(script, company, report) {
 			// Also fetch all scripts for dropdown in split rows
 			frappe.call({
 				method: "portfolio.portfolio.report.scrip_wise_balance_statement.scrip_wise_balance_statement.get_all_scripts",
-				callback: function(res) {
+				callback: function (res) {
 					var all_scripts = res.message || [];
 					render_split_dialog(script, company, portfolios, all_scripts, report);
 				}
@@ -134,7 +140,7 @@ function open_split_dialog(script, company, report) {
 
 function render_split_dialog(current_script, company, portfolios, all_scripts, report) {
 	var portfolio_map = {};
-	var portfolio_options = portfolios.map(function(p) {
+	var portfolio_options = portfolios.map(function (p) {
 		portfolio_map[p.name] = p;
 		var label = `${p.name} | Date: ${p.posting_date} | Qty: ${flt(p.pending_qty || p.qty, 4)} | Rate: ${flt(p.entry_price, 2)} | Amt: ${flt(p.entry_amount, 2)}`;
 		return { label: label, value: p.name };
@@ -248,7 +254,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 			}
 		],
 		primary_action_label: __("Process Split"),
-		primary_action: function() {
+		primary_action: function () {
 			var values = d.get_values();
 			if (!values) return;
 
@@ -268,7 +274,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 			var total_amt = 0;
 			var has_invalid_row = false;
 
-			d.$wrapper.find(".split-table-body tr").each(function(idx) {
+			d.$wrapper.find(".split-table-body tr").each(function (idx) {
 				var $tr = $(this);
 				var row_script = $tr.find(".input-row-script").val();
 				var row_qty = flt($tr.find(".input-row-qty").val());
@@ -312,7 +318,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 
 			frappe.confirm(
 				__("Are you sure you want to execute split on portfolio <b>{0}</b>? This will mark it as <b>Exited</b> and generate new <b>Holding</b> documents for each split row.", [selected_portfolio]),
-				function() {
+				function () {
 					frappe.call({
 						method: "portfolio.portfolio.report.scrip_wise_balance_statement.scrip_wise_balance_statement.execute_portfolio_split",
 						args: {
@@ -322,10 +328,10 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 						},
 						freeze: true,
 						freeze_message: __("Processing Split on Investment Portfolio..."),
-						callback: function(res) {
+						callback: function (res) {
 							if (res.message) {
 								d.hide();
-								var created_links = res.message.map(function(docname) {
+								var created_links = res.message.map(function (docname) {
 									return frappe.utils.get_form_link("Investment Portfolio", docname, true);
 								}).join(", ");
 
@@ -350,7 +356,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 	// Helper to build script select options
 	function get_script_options_html(selected) {
 		var html = `<option value="${frappe.utils.escape_html(current_script)}">${frappe.utils.escape_html(current_script)}</option>`;
-		all_scripts.forEach(function(s) {
+		all_scripts.forEach(function (s) {
 			if (s.name !== current_script) {
 				var opt = frappe.utils.escape_html(s.name);
 				var sel = (s.name === selected) ? ' selected' : '';
@@ -426,7 +432,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 		var total_qty = 0;
 		var total_amt = 0;
 
-		$container.find(".split-table-body tr").each(function() {
+		$container.find(".split-table-body tr").each(function () {
 			var $tr = $(this);
 			var q = flt($tr.find(".input-row-qty").val());
 			var p = flt($tr.find(".input-row-price").val());
@@ -441,21 +447,21 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 
 		// Check quantity match
 		if (Math.abs(total_qty - exp_qty) <= 0.0001) {
-			$qty_badge.css({"background-color": "#dcfce7", "color": "#15803d"})
+			$qty_badge.css({ "background-color": "#dcfce7", "color": "#15803d" })
 				.html(`✓ Qty Matched: <b>${flt(total_qty, 4)} / ${flt(exp_qty, 4)}</b>`);
 		} else {
 			var diff_qty = total_qty - exp_qty;
-			$qty_badge.css({"background-color": "#fee2e2", "color": "#b91c1c"})
+			$qty_badge.css({ "background-color": "#fee2e2", "color": "#b91c1c" })
 				.html(`✕ Qty Mismatch: <b>${flt(total_qty, 4)}</b> (Target: ${flt(exp_qty, 4)}, Diff: ${flt(diff_qty, 4)})`);
 		}
 
 		// Check amount match
 		if (Math.abs(total_amt - target_amt) <= 0.05) {
-			$amt_badge.css({"background-color": "#dcfce7", "color": "#15803d"})
+			$amt_badge.css({ "background-color": "#dcfce7", "color": "#15803d" })
 				.html(`✓ Amount Matched: <b>${total_amt.toFixed(2)} / ${target_amt.toFixed(2)}</b>`);
 		} else {
 			var diff_amt = total_amt - target_amt;
-			$amt_badge.css({"background-color": "#fee2e2", "color": "#b91c1c"})
+			$amt_badge.css({ "background-color": "#fee2e2", "color": "#b91c1c" })
 				.html(`✕ Amount Mismatch: <b>${total_amt.toFixed(2)}</b> (Target: ${target_amt.toFixed(2)}, Diff: ${diff_amt.toFixed(2)})`);
 		}
 	}
@@ -475,25 +481,25 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 	}
 
 	// Handlers for table events
-	$container.on("input", ".input-row-qty, .input-row-price", function() {
+	$container.on("input", ".input-row-qty, .input-row-price", function () {
 		recalculate();
 	});
 
-	$container.on("click", ".btn-remove-row", function() {
+	$container.on("click", ".btn-remove-row", function () {
 		if ($container.find(".split-table-body tr").length > 1) {
 			$(this).closest("tr").remove();
 			recalculate();
 		} else {
-			frappe.show_alert({message: __("At least one split row is required"), indicator: "orange"});
+			frappe.show_alert({ message: __("At least one split row is required"), indicator: "orange" });
 		}
 	});
 
-	$container.on("click", ".btn-add-split-row", function() {
+	$container.on("click", ".btn-add-split-row", function () {
 		add_row(current_script, 0, 0, "0.00");
 	});
 
 	// Handler for portfolio selection change
-	d.fields_dict.portfolio.$input.on("change", function() {
+	d.fields_dict.portfolio.$input.on("change", function () {
 		var sel_name = d.get_value("portfolio");
 		var p = portfolio_map[sel_name];
 		if (p) {
@@ -508,7 +514,7 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 	});
 
 	// Handler for split ratio change
-	d.fields_dict.split_ratio.$input.on("input change", function() {
+	d.fields_dict.split_ratio.$input.on("input change", function () {
 		var ratio = flt(d.get_value("split_ratio"));
 		var cur_qty = flt(d.get_value("current_qty"));
 		var ent_amt = flt(d.get_value("entry_amount"));
@@ -532,3 +538,4 @@ function render_split_dialog(current_script, company, portfolios, all_scripts, r
 	// Initial population of table
 	reset_to_default_split();
 }
+

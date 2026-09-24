@@ -9,18 +9,13 @@
   "script_code",
   "script_name",
   "column_break_xjik",
-  "data_kzgo"
+  "benchmark"
  ],
  "fields": [
   {
    "fieldname": "script_code",
    "fieldtype": "Data",
    "label": "Script Code"
-  },
-  {
-   "fieldname": "data_kzgo",
-   "fieldtype": "Data",
-   "label": "Batch Marks"
   },
   {
    "fieldname": "column_break_xjik",
@@ -31,12 +26,17 @@
    "fieldtype": "Data",
    "label": "Script Name",
    "unique": 1
+  },
+  {
+   "fieldname": "benchmark",
+   "fieldtype": "Data",
+   "label": "Benchmark"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-15 21:26:02.633637",
+ "modified": "2026-09-21 15:24:53.380664",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Script",

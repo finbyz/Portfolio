@@ -1,4 +1,5 @@
 {
+ "app": "portfolio",
  "charts": [],
  "content": "[{\"id\":\"Do0yZ1Dlv5\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Portfolio Management</b></span>\",\"col\":12}},{\"id\":\"9fr5vgua37\",\"type\":\"card\",\"data\":{\"card_name\":\"Portfolio\",\"col\":4}}]",
  "creation": "2023-09-11 05:35:26.573176",
@@ -16,7 +17,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Portfolio",
-   "link_count": 4,
+   "link_count": 7,
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
@@ -59,19 +61,51 @@
    "link_type": "DocType",
    "onboard": 1,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Script",
+   "link_count": 0,
+   "link_to": "Script",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Script-Wise Portfolio Holdings Report",
+   "link_count": 0,
+   "link_to": "Script-Wise Portfolio Holdings Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Script-Wise Trade Book Report",
+   "link_count": 0,
+   "link_to": "Script-Wise Trade Book Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Investment Portfolio",
+   "type": "Link"
   }
  ],
- "modified": "2023-09-12 03:27:23.386244",
+ "modified": "2026-09-21 15:16:42.056792",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Portfolio Management",
  "number_cards": [],
  "owner": "Administrator",
- "parent_page": "Accounting",
+ "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
  "sequence_id": 4.0,
  "shortcuts": [],
- "title": "Portfolio Management"
+ "title": "Portfolio Management",
+ "type": "Workspace"
 }

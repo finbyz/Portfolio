@@ -109,6 +109,13 @@ def get_columns(filters):
 			"width": 115,
 		},
 		{
+			"label": _("Charges"),
+			"fieldname": "charges",
+			"fieldtype": "Currency",
+			"options": "currency",
+			"width": 110,
+		},
+		{
 			"label": _("Out Qty"),
 			"fieldname": "out_qty",
 			"fieldtype": "Float",
@@ -177,24 +184,27 @@ def get_data(filters):
 	all_raw_entries = get_all_raw_transactions(filters)
 	script_names_map = get_script_names_map()
 
-	# Group raw entries by script
-	entries_by_script = {}
+	# Group raw entries by (company, script)
+	grouped_entries = {}
 	for row in all_raw_entries:
+		comp = row.get("company") or filters.get("company") or ""
 		s = row.get("script") or "Unknown"
-		entries_by_script.setdefault(s, []).append(row)
+		key = (comp, s)
+		grouped_entries.setdefault(key, []).append(row)
 
 	data = []
 	total_in_qty = 0.0
 	total_in_amount = 0.0
 	total_out_qty = 0.0
 	total_out_amount = 0.0
-	total_realized_pnl = 0.0
+	total_charges = 0.0
 	final_bal_qty = 0.0
 	final_bal_val = 0.0
 
-	# Sort scripts alphabetically for consistent reporting
-	for scrip in sorted(entries_by_script.keys()):
-		script_entries = entries_by_script[scrip]
+	# Sort by company and script for consistent reporting
+	for key in sorted(grouped_entries.keys(), key=lambda x: (x[0] or "", x[1] or "")):
+		comp, scrip = key
+		script_entries = grouped_entries[key]
 		# Sort by posting_date asc, inward before outward on same date, voucher_no asc
 		script_entries.sort(
 			key=lambda x: (
@@ -208,21 +218,39 @@ def get_data(filters):
 		running_value = 0.0
 		avg_rate = 0.0
 
+		visible_entries = []
 		opening_qty = 0.0
 		opening_value = 0.0
-		opening_avg_rate = 0.0
-
-		visible_entries = []
+		opening_rate = 0.0
+		has_opening = False
 
 		for entry in script_entries:
 			e_date = getdate(entry.get("posting_date")) if entry.get("posting_date") else None
+			if to_date and e_date and e_date > to_date:
+				continue
+
 			in_qty = flt(entry.get("in_qty"))
 			in_rate = flt(entry.get("in_rate"))
 			in_amount = flt(entry.get("in_amount")) or (in_qty * in_rate)
 			out_qty = flt(entry.get("out_qty"))
 			out_rate = flt(entry.get("out_rate"))
 			out_amount = flt(entry.get("out_amount")) or (out_qty * out_rate)
-			realized_pnl = 0.0
+
+			charges = None
+			if entry.get("is_inward"):
+				entry_charges = flt(entry.get("entry_charges"))
+				if entry_charges:
+					charges = entry_charges
+			else:
+				exit_charges = flt(entry.get("exit_charges"))
+				if not exit_charges and flt(entry.get("out_amount")) and flt(entry.get("net_exit_amount")):
+					diff = flt(entry.get("out_amount")) - flt(entry.get("net_exit_amount"))
+					if diff > 0:
+						exit_charges = diff
+				if exit_charges:
+					charges = exit_charges
+
+			cost_amt = flt(entry.get("cost_amount")) or (out_qty * flt(entry.get("entry_price")))
 
 			# Calculate running balances
 			if in_qty > 0:
@@ -231,29 +259,54 @@ def get_data(filters):
 				avg_rate = running_value / running_qty if running_qty > 0 else 0.0
 			elif out_qty > 0:
 				# Cost basis of outward shares
-				cost_of_out = out_qty * avg_rate
-				realized_pnl = flt(entry.get("net_exit_amount") or out_amount) - cost_of_out
+				cost_basis = cost_amt if cost_amt > 0 else (out_qty * avg_rate)
 				running_qty -= out_qty
 				if running_qty <= 0.00001:
 					running_qty = 0.0
 					running_value = 0.0
 					avg_rate = 0.0
 				else:
-					running_value -= out_amount
+					running_value -= cost_basis
 					if running_value < 0:
 						running_value = 0.0
 					avg_rate = running_value / running_qty if running_qty > 0 else 0.0
 
-			# Check if before from_date
+			row_comp = entry.get("company") or comp
+			row_currency = get_company_currency(row_comp) if row_comp else company_currency
+
 			if from_date and e_date and e_date < from_date:
 				opening_qty = running_qty
 				opening_value = running_value
-				opening_avg_rate = avg_rate
+				opening_rate = avg_rate
+				has_opening = True
 				continue
 
-			# Check if after to_date
-			if to_date and e_date and e_date > to_date:
-				continue
+			# If this is the first visible transaction in the period and there was an opening balance
+			if from_date and has_opening and opening_qty > 0 and not visible_entries:
+				visible_entries.append({
+					"posting_date": from_date,
+					"script": scrip,
+					"script_name": script_names_map.get(scrip, scrip),
+					"voucher_type": None,
+					"voucher_no": None,
+					"transaction_type": "Opening",
+					"company": row_comp,
+					"segment": entry.get("segment"),
+					"category": entry.get("category"),
+					"holding_account": entry.get("holding_account"),
+					"in_qty": None,
+					"in_rate": None,
+					"in_amount": None,
+					"charges": None,
+					"out_qty": None,
+					"out_rate": None,
+					"out_amount": None,
+					"balance_qty": opening_qty,
+					"balance_rate": opening_rate,
+					"balance_value": opening_value,
+					"jv_reference": None,
+					"currency": row_currency,
+				})
 
 			row = {
 				"posting_date": entry.get("posting_date"),
@@ -262,13 +315,14 @@ def get_data(filters):
 				"voucher_type": entry.get("voucher_type"),
 				"voucher_no": entry.get("voucher_no"),
 				"transaction_type": entry.get("transaction_type"),
-				"company": entry.get("company"),
+				"company": row_comp,
 				"segment": entry.get("segment"),
 				"category": entry.get("category"),
 				"holding_account": entry.get("holding_account"),
 				"in_qty": in_qty if in_qty else None,
 				"in_rate": in_rate if in_qty else None,
 				"in_amount": in_amount if in_qty else None,
+				"charges": charges if charges else None,
 				"out_qty": out_qty if out_qty else None,
 				"out_rate": out_rate if out_qty else None,
 				"out_amount": out_amount if out_qty else None,
@@ -276,44 +330,19 @@ def get_data(filters):
 				"balance_rate": avg_rate,
 				"balance_value": running_value,
 				"jv_reference": entry.get("jv_reference"),
-				"currency": company_currency,
+				"currency": row_currency,
 			}
 
 			total_in_qty += in_qty
 			total_in_amount += in_amount
 			total_out_qty += out_qty
 			total_out_amount += out_amount
+			if charges:
+				total_charges += charges
 
 			visible_entries.append(row)
 
-		# If we have an opening balance and any visible entries or filters applied
-		if (from_date and opening_qty > 0) or visible_entries:
-			if from_date and opening_qty > 0:
-				opening_row = {
-					"posting_date": from_date,
-					"script": scrip,
-					"script_name": script_names_map.get(scrip, scrip),
-					"voucher_type": _("Opening Balance"),
-					"voucher_no": None,
-					"transaction_type": _("Opening"),
-					"company": filters.get("company"),
-					"segment": visible_entries[0].get("segment") if visible_entries else None,
-					"category": visible_entries[0].get("category") if visible_entries else None,
-					"holding_account": visible_entries[0].get("holding_account") if visible_entries else None,
-					"in_qty": None,
-					"in_rate": None,
-					"in_amount": None,
-					"out_qty": None,
-					"out_rate": None,
-					"out_amount": None,
-					"balance_qty": opening_qty,
-					"balance_rate": opening_avg_rate,
-					"balance_value": opening_value,
-					"jv_reference": None,
-					"currency": company_currency,
-				}
-				data.append(opening_row)
-
+		if visible_entries:
 			data.extend(visible_entries)
 			final_bal_qty += running_qty
 			final_bal_val += running_value
@@ -352,6 +381,12 @@ def get_data(filters):
 		{
 			"value": total_out_amount,
 			"label": _("Total Outward Amount"),
+			"datatype": "Currency",
+			"currency": company_currency,
+		},
+		{
+			"value": total_charges,
+			"label": _("Total Charges"),
 			"datatype": "Currency",
 			"currency": company_currency,
 		},
@@ -397,6 +432,16 @@ def get_all_raw_transactions(filters):
 
 	where_clause = " AND ".join(conditions)
 
+	to_date_inward_cond = ""
+	to_date_exit_cond = ""
+	to_date_split_cond = ""
+
+	if filters.get("to_date"):
+		query_params["to_date"] = filters.get("to_date")
+		to_date_inward_cond = " AND p.posting_date <= %(to_date)s"
+		to_date_exit_cond = " AND s.exit_date <= %(to_date)s"
+		to_date_split_cond = " AND DATE(p.modified) <= %(to_date)s"
+
 	# 1. Inward Purchases / Investments
 	inward_query = f"""
 		SELECT
@@ -408,9 +453,13 @@ def get_all_raw_transactions(filters):
 			p.segment,
 			p.category,
 			p.holding_account,
+			p.entry_price AS entry_price,
+			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			p.qty AS in_qty,
 			p.entry_price AS in_rate,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS in_amount,
+			COALESCE(p.entry_charges, 0.0) AS entry_charges,
+			0.0 AS exit_charges,
 			0.0 AS out_qty,
 			0.0 AS out_rate,
 			0.0 AS out_amount,
@@ -421,7 +470,7 @@ def get_all_raw_transactions(filters):
 			END AS transaction_type,
 			1 AS is_inward
 		FROM `tabInvestment Portfolio` p
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_inward_cond}
 	"""
 
 	inwards = frappe.db.sql(inward_query, query_params, as_dict=True)
@@ -438,9 +487,17 @@ def get_all_raw_transactions(filters):
 			p.segment,
 			p.category,
 			p.holding_account,
+			p.entry_price AS entry_price,
+			COALESCE(s.exit_qty * p.entry_price, 0.0) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
+			0.0 AS entry_charges,
+			CASE
+				WHEN s.net_exit_amount IS NOT NULL AND s.net_exit_amount > 0 AND (COALESCE(s.exit_amount, s.exit_qty * s.exit_price) > s.net_exit_amount)
+				THEN (COALESCE(s.exit_amount, s.exit_qty * s.exit_price) - s.net_exit_amount)
+				ELSE 0.0
+			END AS exit_charges,
 			s.exit_qty AS out_qty,
 			s.exit_price AS out_rate,
 			COALESCE(s.exit_amount, s.exit_qty * s.exit_price) AS out_amount,
@@ -450,7 +507,7 @@ def get_all_raw_transactions(filters):
 			0 AS is_inward
 		FROM `tabInvestment Portfolio Segment` s
 		INNER JOIN `tabInvestment Portfolio` p ON s.parent = p.name
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_exit_cond}
 	"""
 
 	exits = frappe.db.sql(exit_query, query_params, as_dict=True)
@@ -467,9 +524,13 @@ def get_all_raw_transactions(filters):
 			p.segment,
 			p.category,
 			p.holding_account,
+			p.entry_price AS entry_price,
+			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
+			0.0 AS entry_charges,
+			0.0 AS exit_charges,
 			p.qty AS out_qty,
 			p.entry_price AS out_rate,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS out_amount,
@@ -478,7 +539,7 @@ def get_all_raw_transactions(filters):
 			'Split Out' AS transaction_type,
 			0 AS is_inward
 		FROM `tabInvestment Portfolio` p
-		WHERE {where_clause}
+		WHERE {where_clause} {to_date_split_cond}
 			AND p.status = 'Exited'
 			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Split` sp WHERE sp.parent = p.name) > 0
 			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name) = 0
@@ -535,4 +596,5 @@ def get_chart(data, filters):
 		},
 		"type": "bar",
 		"colors": ["#5e64ff"],
+		
 	}
