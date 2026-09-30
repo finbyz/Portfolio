@@ -57,6 +57,12 @@ def get_columns(filters):
 			"fieldname": "transaction_type",
 			"fieldtype": "Data",
 			"width": 110,
+		},	
+		{
+			"label": _("Split / Bonus"),
+			"fieldname": "split_bonus",
+			"fieldtype": "Data",
+			"width": 170,
 		},
 		{
 			"label": _("Company"),
@@ -92,6 +98,14 @@ def get_columns(filters):
 			"fieldtype": "Float",
 			"precision": 4,
 			"width": 90,
+		},
+		{
+			"label": _("Purchase Rate"),
+			"fieldname": "purchase_rate",
+			"fieldtype": "Currency",
+			"options": "currency",
+			"precision": 4,
+			"width": 110,
 		},
 		{
 			"label": _("In Rate"),
@@ -290,11 +304,13 @@ def get_data(filters):
 					"voucher_type": None,
 					"voucher_no": None,
 					"transaction_type": "Opening",
+					"split_bonus": "",
 					"company": row_comp,
 					"segment": entry.get("segment"),
 					"category": entry.get("category"),
 					"holding_account": entry.get("holding_account"),
 					"in_qty": None,
+					"purchase_rate": None,
 					"in_rate": None,
 					"in_amount": None,
 					"charges": None,
@@ -308,6 +324,23 @@ def get_data(filters):
 					"currency": row_currency,
 				})
 
+			purchase_rate = None
+			if in_qty:
+				purchase_rate = flt(entry.get("purchase_rate")) if entry.get("purchase_rate") else in_rate
+
+			split_val = entry.get("split") or ""
+			is_bonus = 1 if entry.get("is_bonus_applied") else 0
+
+			split_bonus = ""
+			if split_val == "Split In" and is_bonus:
+				split_bonus = "Split In / Bonus"
+			elif split_val == "Split In":
+				split_bonus = "Split In"
+			elif split_val == "Split Out":
+				split_bonus = "Split Out"
+			elif is_bonus:
+				split_bonus = "Bonus"
+
 			row = {
 				"posting_date": entry.get("posting_date"),
 				"script": scrip,
@@ -315,11 +348,13 @@ def get_data(filters):
 				"voucher_type": entry.get("voucher_type"),
 				"voucher_no": entry.get("voucher_no"),
 				"transaction_type": entry.get("transaction_type"),
+				"split_bonus": split_bonus,
 				"company": row_comp,
 				"segment": entry.get("segment"),
 				"category": entry.get("category"),
 				"holding_account": entry.get("holding_account"),
 				"in_qty": in_qty if in_qty else None,
+				"purchase_rate": purchase_rate,
 				"in_rate": in_rate if in_qty else None,
 				"in_amount": in_amount if in_qty else None,
 				"charges": charges if charges else None,
@@ -454,6 +489,7 @@ def get_all_raw_transactions(filters):
 			p.category,
 			p.holding_account,
 			p.entry_price AS entry_price,
+			COALESCE(p.purchase_entry_price, p.entry_price) AS purchase_rate,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			p.qty AS in_qty,
 			p.entry_price AS in_rate,
@@ -468,6 +504,11 @@ def get_all_raw_transactions(filters):
 				WHEN p.split_from IS NOT NULL AND p.split_from != '' THEN 'Split In'
 				ELSE 'Purchase'
 			END AS transaction_type,
+			CASE
+				WHEN p.split_from IS NOT NULL AND p.split_from != '' THEN 'Split In'
+				ELSE ''
+			END AS split,
+			COALESCE(p.is_bonus_applied, CASE WHEN p.ratio > 0 OR p.bonus_date IS NOT NULL THEN 1 ELSE 0 END) AS is_bonus_applied,
 			1 AS is_inward
 		FROM `tabInvestment Portfolio` p
 		WHERE {where_clause} {to_date_inward_cond}
@@ -488,6 +529,7 @@ def get_all_raw_transactions(filters):
 			p.category,
 			p.holding_account,
 			p.entry_price AS entry_price,
+			NULL AS purchase_rate,
 			COALESCE(s.exit_qty * p.entry_price, 0.0) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
@@ -504,6 +546,8 @@ def get_all_raw_transactions(filters):
 			s.net_exit_amount,
 			s.jv_of_exit AS jv_reference,
 			'Exit / Sale' AS transaction_type,
+			'' AS split,
+			COALESCE(p.is_bonus_applied, CASE WHEN p.ratio > 0 OR p.bonus_date IS NOT NULL THEN 1 ELSE 0 END) AS is_bonus_applied,
 			0 AS is_inward
 		FROM `tabInvestment Portfolio Segment` s
 		INNER JOIN `tabInvestment Portfolio` p ON s.parent = p.name
@@ -525,6 +569,7 @@ def get_all_raw_transactions(filters):
 			p.category,
 			p.holding_account,
 			p.entry_price AS entry_price,
+			NULL AS purchase_rate,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
@@ -537,6 +582,8 @@ def get_all_raw_transactions(filters):
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS net_exit_amount,
 			p.jv_of_entry AS jv_reference,
 			'Split Out' AS transaction_type,
+			'Split Out' AS split,
+			COALESCE(p.is_bonus_applied, CASE WHEN p.ratio > 0 OR p.bonus_date IS NOT NULL THEN 1 ELSE 0 END) AS is_bonus_applied,
 			0 AS is_inward
 		FROM `tabInvestment Portfolio` p
 		WHERE {where_clause} {to_date_split_cond}

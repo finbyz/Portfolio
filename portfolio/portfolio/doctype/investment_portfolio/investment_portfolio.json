@@ -19,12 +19,15 @@
   "posting_date",
   "company",
   "is_existing",
+  "is_bonus_applied",
+  "is_split",
   "jv_of_entry",
   "split_from",
   "split__investment_portfolio",
   "entry_section_section",
   "qty",
   "old_qty",
+  "purchase_entry_price",
   "entry_price",
   "entry_amount",
   "set_entry_charges_manually",
@@ -37,13 +40,12 @@
   "ratio",
   "post_bonus_qty",
   "portfolio_split_section",
-  "split_ratio",
-  "column_break_sjar",
   "post_split_qty",
   "column_break_kgvz",
   "split",
   "section_break_ugcl",
   "investment_portfolio_split",
+  "split_summary_html",
   "exit_section_section",
   "exit_qty",
   "exit_price",
@@ -143,6 +145,22 @@
    "label": "Is Existing"
   },
   {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_bonus_applied",
+   "fieldtype": "Check",
+   "label": "Bonus Applied",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_split",
+   "fieldtype": "Check",
+   "label": "Is Split",
+   "read_only": 1
+  },
+  {
    "fieldname": "entry_section_section",
    "fieldtype": "Section Break",
    "label": "Entry Section",
@@ -158,6 +176,16 @@
    "precision": "4",
    "read_only_depends_on": "eval:doc.docstatus == 1;",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 1,
+   "fieldname": "purchase_entry_price",
+   "fieldtype": "Currency",
+   "label": "Purchase Entry Price",
+   "options": "currency",
+   "precision": "4",
+   "read_only_depends_on": "eval:doc.docstatus == 1;"
   },
   {
    "allow_on_submit": 1,
@@ -417,17 +445,6 @@
   },
   {
    "allow_on_submit": 1,
-   "fieldname": "split_ratio",
-   "fieldtype": "Float",
-   "label": "Split Ratio",
-   "precision": "4"
-  },
-  {
-   "fieldname": "column_break_sjar",
-   "fieldtype": "Column Break"
-  },
-  {
-   "allow_on_submit": 1,
    "fieldname": "post_split_qty",
    "fieldtype": "Float",
    "label": "Qty After Split",
@@ -453,6 +470,11 @@
    "fieldtype": "Table",
    "label": "Investment Portfolio Split",
    "options": "Investment Portfolio Split"
+  },
+  {
+   "fieldname": "split_summary_html",
+   "fieldtype": "HTML",
+   "label": "Split Summary"
   }
  ],
  "is_submittable": 1,

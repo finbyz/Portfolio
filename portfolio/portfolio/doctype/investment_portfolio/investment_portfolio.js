@@ -9,10 +9,19 @@ frappe.ui.form.on('Investment Portfolio', {
 		if(frm.doc.qty){
 		frm.trigger("total_value")}
 	},
+	purchase_entry_price: function(frm) {
+		if (frm.doc.purchase_entry_price && (!frm.doc.entry_price || flt(frm.doc.entry_price) === 0)) {
+			frm.set_value("entry_price", frm.doc.purchase_entry_price);
+		}
+	},
 	entry_price:function(frm){
+		if (frm.doc.entry_price && (!frm.doc.purchase_entry_price || flt(frm.doc.purchase_entry_price) === 0)) {
+			frm.set_value("purchase_entry_price", frm.doc.entry_price);
+		}
 		if(frm.doc.entry_price){
-		frm.trigger("total_value")
-	}},
+			frm.trigger("total_value")
+		}
+	},
 	cal_entry_charges:function(frm){
 		let entry_amount=frm.doc.entry_amount;
 		let total_cost_of_ownership=frm.doc.total_cost_of_ownership;
@@ -60,16 +69,93 @@ frappe.ui.form.on('Investment Portfolio', {
 			frm.trigger("total_values")}
 	},
 
-	split_ratio: function(frm) {
-		if (frm.doc.split_ratio) {
-			let base_qty = (frm.doc.docstatus === 1 && frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
-				? flt(frm.doc.pending_qty)
-				: flt(frm.doc.qty);
-			frm.set_value("post_split_qty", base_qty * flt(frm.doc.split_ratio));
-		}
+	post_split_qty: function(frm) {
+		render_split_summary(frm);
 	},
 
 	split: function(frm) {
+		let post_split_qty = flt(frm.doc.post_split_qty);
+		if (!post_split_qty || post_split_qty <= 0) {
+			frappe.msgprint({
+				title: __("Validation"),
+				indicator: "red",
+				message: __("Please enter a valid <strong>Qty After Split</strong> first.")
+			});
+			return;
+		}
+
+		let split_rows = frm.doc.investment_portfolio_split || [];
+		if (!split_rows.length) {
+			frappe.msgprint({
+				title: __("Validation"),
+				indicator: "red",
+				message: __("Please add at least one row in the <strong>Investment Portfolio Split</strong> table.")
+			});
+			return;
+		}
+
+		let base_qty = (frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
+			? flt(frm.doc.pending_qty)
+			: flt(frm.doc.qty);
+		let target_amount = base_qty * flt(frm.doc.entry_price);
+		let total_split_amount = 0.0;
+		let total_split_qty = 0.0;
+
+		for (let row of split_rows) {
+			if (!row.script || !flt(row.qty) || !flt(row.per_share_price)) {
+				frappe.msgprint({
+					title: __("Validation"),
+					indicator: "red",
+					message: __("Row {0}: Script, Qty and Per Share Price are all required.", [row.idx])
+				});
+				return;
+			}
+			row.amount = flt(row.qty) * flt(row.per_share_price);
+			total_split_amount += row.amount;
+			total_split_qty += flt(row.qty);
+		}
+
+		let currency = frm.doc.currency || "INR";
+		let diff_amount = target_amount - total_split_amount;
+		let diff_qty = post_split_qty - total_split_qty;
+
+		if (Math.abs(diff_qty) > 0.0001) {
+			frappe.msgprint({
+				title: __("Qty Mismatch"),
+				indicator: "red",
+				message: __("Total Split Qty (<strong>{0}</strong>) must equal Qty After Split (<strong>{1}</strong>).<br>Difference: <strong>{2}</strong>", [
+					format_number(total_split_qty, null, 4),
+					format_number(post_split_qty, null, 4),
+					format_number(diff_qty, null, 4)
+				])
+			});
+			return;
+		}
+
+		if (Math.abs(diff_amount) > 0.01) {
+			let msg = diff_amount > 0
+				? __("Total Split Amount (<strong>{0}</strong>) is less than Required Amount (<strong>{1}</strong> = {2} Pending Qty × {3}).<br>Additional Amount Needed: <strong style='color:red;'>{4}</strong>", [
+					format_currency(total_split_amount, currency),
+					format_currency(target_amount, currency),
+					format_number(base_qty, null, 4),
+					format_currency(frm.doc.entry_price, currency),
+					format_currency(diff_amount, currency)
+				])
+				: __("Total Split Amount (<strong>{0}</strong>) exceeds Required Amount (<strong>{1}</strong> = {2} Pending Qty × {3}) by <strong style='color:red;'>{4}</strong>.", [
+					format_currency(total_split_amount, currency),
+					format_currency(target_amount, currency),
+					format_number(base_qty, null, 4),
+					format_currency(frm.doc.entry_price, currency),
+					format_currency(Math.abs(diff_amount), currency)
+				]);
+			frappe.msgprint({
+				title: __("Amount Mismatch"),
+				indicator: "red",
+				message: msg
+			});
+			return;
+		}
+
 		frappe.confirm(
 			__("This will mark the document as Exited and create new Investment Portfolio document(s) for each row. Continue?"),
 			function() {
@@ -200,6 +286,7 @@ frappe.ui.form.on('Investment Portfolio', {
 				}
 			};
 		});
+		render_split_summary(frm);
 	},
 	validate: function(frm) {
 		if (frm.doc.total_cost_of_ownership < frm.doc.entry_amount) {
@@ -261,9 +348,17 @@ frappe.ui.form.on('Investment Portfolio', {
 frappe.ui.form.on('Investment Portfolio Split', {
     qty: function(frm, cdt, cdn) {
         calculate_split_row_amount(frm, cdt, cdn);
+        render_split_summary(frm);
     },
     per_share_price: function(frm, cdt, cdn) {
         calculate_split_row_amount(frm, cdt, cdn);
+        render_split_summary(frm);
+    },
+    investment_portfolio_split_remove: function(frm) {
+        render_split_summary(frm);
+    },
+    investment_portfolio_split_add: function(frm) {
+        render_split_summary(frm);
     }
 });
 
@@ -271,6 +366,84 @@ function calculate_split_row_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     row.amount = flt(row.qty) * flt(row.per_share_price);
     frm.refresh_field("investment_portfolio_split");
+}
+
+function render_split_summary(frm) {
+    if (!frm.fields_dict.split_summary_html || !frm.fields_dict.split_summary_html.$wrapper) return;
+
+    let post_split_qty = flt(frm.doc.post_split_qty);
+    let entry_price = flt(frm.doc.entry_price);
+    let base_qty = (frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
+        ? flt(frm.doc.pending_qty)
+        : flt(frm.doc.qty);
+    let target_amount = base_qty * entry_price;
+
+    let total_split_qty = 0.0;
+    let total_split_amount = 0.0;
+
+    (frm.doc.investment_portfolio_split || []).forEach(row => {
+        let q = flt(row.qty);
+        let p = flt(row.per_share_price);
+        row.amount = q * p;
+        total_split_qty += q;
+        total_split_amount += row.amount;
+    });
+
+    let diff_qty = post_split_qty - total_split_qty;
+    let diff_amount = target_amount - total_split_amount;
+
+    let currency = frm.doc.currency || "INR";
+    let is_amount_matched = Math.abs(diff_amount) < 0.01 && target_amount > 0;
+    let is_qty_matched = Math.abs(diff_qty) < 0.0001 && post_split_qty > 0;
+
+    let status_badge = "";
+    if (post_split_qty <= 0) {
+        status_badge = `<span class="indicator-pill orange">${__("Please enter Qty After Split")}</span>`;
+    } else if (is_amount_matched && is_qty_matched) {
+        status_badge = `<span class="indicator-pill green"><strong>${__("✓ Amount & Qty Matched")}</strong></span>`;
+    } else {
+        let msgs = [];
+        if (!is_qty_matched) {
+            msgs.push(diff_qty > 0 ? `${__("Need Qty")}: ${format_number(diff_qty, null, 4)}` : `${__("Excess Qty")}: ${format_number(Math.abs(diff_qty), null, 4)}`);
+        }
+        if (!is_amount_matched) {
+            msgs.push(diff_amount > 0 ? `${__("Need Amount")}: ${format_currency(diff_amount, currency)}` : `${__("Excess Amount")}: ${format_currency(Math.abs(diff_amount), currency)}`);
+        }
+        status_badge = `<span class="indicator-pill red"><strong>${msgs.join(" | ")}</strong></span>`;
+    }
+
+    let html = `
+        <div style="margin-top: 10px; margin-bottom: 15px; padding: 14px; background-color: var(--bg-light-gray, #f8f9fa); border: 1px solid var(--border-color, #d1d8dd); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h6 style="margin: 0; font-weight: 600; color: var(--text-color);">${__("Split Calculation & Validation Summary")}</h6>
+                <div>${status_badge}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <div style="padding: 10px; background: var(--card-bg, #ffffff); border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${__("Required Split Amount")}</div>
+                    <div style="font-size: 15px; font-weight: bold; color: var(--text-color); margin-top: 4px;">${format_currency(target_amount, currency)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${format_number(base_qty, null, 4)} (Pending Qty) × ${format_currency(entry_price, currency)}</div>
+                </div>
+                <div style="padding: 10px; background: var(--card-bg, #ffffff); border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${__("Total Entered Amount")}</div>
+                    <div style="font-size: 15px; font-weight: bold; color: ${is_amount_matched ? 'var(--green-600, #28a745)' : 'var(--red-600, #e02424)'}; margin-top: 4px;">${format_currency(total_split_amount, currency)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${__("Sum of rows in child table")}</div>
+                </div>
+                <div style="padding: 10px; background: var(--card-bg, #ffffff); border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${__("Amount Remaining / Needed")}</div>
+                    <div style="font-size: 15px; font-weight: bold; color: ${is_amount_matched ? 'var(--green-600, #28a745)' : 'var(--red-600, #e02424)'}; margin-top: 4px;">${format_currency(diff_amount, currency)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${is_amount_matched ? __('Exact match') : (diff_amount > 0 ? __('Shortage') : __('Excess'))}</div>
+                </div>
+                <div style="padding: 10px; background: var(--card-bg, #ffffff); border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${__("Qty (Entered / Target)")}</div>
+                    <div style="font-size: 15px; font-weight: bold; color: ${is_qty_matched ? 'var(--green-600, #28a745)' : 'var(--red-600, #e02424)'}; margin-top: 4px;">${format_number(total_split_qty, null, 4)} / ${format_number(post_split_qty, null, 4)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${is_qty_matched ? __('Qty matched') : `${__('Difference')}: ${format_number(diff_qty, null, 4)}`}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    frm.fields_dict.split_summary_html.$wrapper.html(html);
 }
 
 

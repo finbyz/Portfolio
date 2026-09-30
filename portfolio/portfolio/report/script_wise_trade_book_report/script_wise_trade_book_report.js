@@ -84,6 +84,20 @@ frappe.query_reports["Script-Wise Trade Book Report"] = {
 			}
 		}
 
+		if (column.fieldname === "split_bonus" || column.fieldname === "split") {
+			if (data && data.split_bonus) {
+				if (data.split_bonus === "Split In") {
+					value = `<span class="indicator-pill green">${__("Split In")}</span>`;
+				} else if (data.split_bonus === "Split Out") {
+					value = `<span class="indicator-pill orange">${__("Split Out")}</span>`;
+				} else if (data.split_bonus === "Bonus") {
+					value = `<span class="indicator-pill purple" style="background-color: #ede9fe; color: #6b21a8; font-weight: 500;">${__("Bonus")}</span>`;
+				} else if (data.split_bonus === "Split In / Bonus") {
+					value = `<span class="indicator-pill green">${__("Split In")}</span> <span class="indicator-pill purple" style="background-color: #ede9fe; color: #6b21a8; font-weight: 500;">${__("Bonus")}</span>`;
+				}
+			}
+		}
+
 		if (column.fieldname === "balance_qty" && data && data.balance_qty > 0) {
 			value = `<strong>${value}</strong>`;
 		}

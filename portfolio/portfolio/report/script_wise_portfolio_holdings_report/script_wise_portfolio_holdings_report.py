@@ -494,8 +494,7 @@ def execute_portfolio_split(portfolio, split_ratio, split_rows):
 	if doc.status != "Holding":
 		frappe.throw(_("Document {0} status must be Holding to Split (Current: {1})").format(portfolio, doc.status))
 
-	# Update split ratio and post split qty
-	doc.split_ratio = split_ratio
+	# Update post split qty
 	doc.post_split_qty = flt(doc.qty) * split_ratio
 
 	# Populate child table investment_portfolio_split

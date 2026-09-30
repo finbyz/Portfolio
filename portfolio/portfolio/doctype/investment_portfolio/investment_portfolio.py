@@ -10,14 +10,19 @@ import erpnext
 class InvestmentPortfolio(Document):
 	
 	def validate(self):
+		if not flt(self.purchase_entry_price) and flt(self.entry_price):
+			self.purchase_entry_price = self.entry_price
+		elif not flt(self.entry_price) and flt(self.purchase_entry_price):
+			self.entry_price = self.purchase_entry_price
+
+		if (self.split_from or (self.get("investment_portfolio_split") and len(self.get("investment_portfolio_split")) > 0 and self.status == "Exited")) and not self.is_split:
+			self.is_split = 1
+
+		if (self.ratio or self.bonus_date) and not self.is_bonus_applied:
+			self.is_bonus_applied = 1
+
 		self.calculate_entry_amount()
 		self.calculate_pending_qty()
-		self.calculate_post_split_qty()
-	
-	def calculate_post_split_qty(self):
-		if self.split_ratio:
-			base_qty = flt(self.pending_qty) if (self.docstatus == 1 and flt(self.pending_qty) > 0) else flt(self.qty)
-			self.post_split_qty = base_qty * flt(self.split_ratio)
 		
 	def on_update_after_submit(self):
 		self.calculate_pending_qty()
@@ -366,6 +371,9 @@ def apply_bonus(script, ratio, bonus_date, date=None):
 		new_total_qty = flt(doc.qty) + bonus_shares
 		new_entry_price = flt(doc.entry_price) / (1.0 + ratio)
 
+		if not flt(doc.purchase_entry_price):
+			doc.db_set("purchase_entry_price", flt(doc.entry_price), update_modified=True)
+
 		doc.db_set("old_qty", flt(doc.qty), update_modified=True)
 		doc.db_set("old_pending_qty", current_pending_qty, update_modified=True)
 		doc.db_set("ratio", ratio, update_modified=True)
@@ -374,6 +382,7 @@ def apply_bonus(script, ratio, bonus_date, date=None):
 		doc.db_set("qty", new_total_qty, update_modified=True)
 		doc.db_set("pending_qty", new_pending_qty, update_modified=True)
 		doc.db_set("entry_price", new_entry_price, update_modified=True)
+		doc.db_set("is_bonus_applied", 1, update_modified=True)
 		doc.set_status()
 		updated.append(row.name)
 
@@ -390,11 +399,12 @@ def process_split(name):
         frappe.throw(_("Split can only be done when status is Holding or Partially Exited"))
     if not doc.investment_portfolio_split:
         frappe.throw(_("Add at least one row in Investment Split table"))
-    if not doc.split_ratio:
-        frappe.throw(_("Split Ratio is mandatory"))
+    if not flt(doc.post_split_qty):
+        frappe.throw(_("Qty After Split is mandatory"))
 
     base_qty = flt(doc.pending_qty) if flt(doc.pending_qty) > 0 else flt(doc.qty)
-    base_amount = base_qty * flt(doc.entry_price)
+    expected_amount = base_qty * flt(doc.entry_price)
+    expected_qty = flt(doc.post_split_qty)
 
     total_split_amount = 0
     total_split_qty = 0
@@ -405,20 +415,35 @@ def process_split(name):
         total_split_amount += row.amount
         total_split_qty += flt(row.qty)
 
-    if flt(total_split_amount, 2) != flt(base_amount, 2):
+    if abs(flt(total_split_qty, 4) - flt(expected_qty, 4)) > 0.0001:
         frappe.throw(
-            _("Total Split Amount ({0}) must equal Remaining Entry Amount ({1})").format(
-                flt(total_split_amount, 2), flt(base_amount, 2)
+            _("Total Split Qty ({0}) must equal Qty After Split ({1})").format(
+                flt(total_split_qty, 4), flt(expected_qty, 4)
             )
         )
 
-    expected_qty = base_qty * flt(doc.split_ratio)
-    if flt(total_split_qty, 4) != flt(expected_qty, 4):
-        frappe.throw(
-            _("Total Split Qty ({0}) must equal Qty After Split ({1})").format(
-                total_split_qty, expected_qty
+    if abs(flt(total_split_amount, 2) - flt(expected_amount, 2)) > 0.01:
+        diff = expected_amount - total_split_amount
+        if diff > 0:
+            frappe.throw(
+                _("Total Split Amount ({0}) does not match Required Amount ({1} = {2} × {3}). Need additional amount of {4}").format(
+                    flt(total_split_amount, 2),
+                    flt(expected_amount, 2),
+                    flt(base_qty, 4),
+                    flt(doc.entry_price, 4),
+                    flt(diff, 2),
+                )
             )
-        )
+        else:
+            frappe.throw(
+                _("Total Split Amount ({0}) exceeds Required Amount ({1} = {2} × {3}) by {4}").format(
+                    flt(total_split_amount, 2),
+                    flt(expected_amount, 2),
+                    flt(base_qty, 4),
+                    flt(doc.entry_price, 4),
+                    flt(abs(diff), 2),
+                )
+            )
 
     new_docs = []
     for row in doc.investment_portfolio_split:
@@ -429,6 +454,7 @@ def process_split(name):
         new_doc.company = doc.company
         new_doc.posting_date = nowdate()
         new_doc.qty = row.qty
+        new_doc.purchase_entry_price = row.per_share_price
         new_doc.entry_price = row.per_share_price
         new_doc.holding_account = doc.holding_account
         new_doc.funds_debited_from = doc.funds_debited_from
@@ -437,6 +463,7 @@ def process_split(name):
         new_doc.is_existing = 1
         new_doc.jv_of_entry = doc.jv_of_entry
         new_doc.split_from = doc.name
+        new_doc.is_split = 1
         new_doc.save()
         new_doc.reload()
         new_doc.submit()
@@ -446,5 +473,32 @@ def process_split(name):
 
     doc.db_set("pending_qty", 0)
     doc.db_set("status", "Exited")
+    doc.db_set("is_split", 1)
 
     return new_docs
+
+
+@frappe.whitelist()
+def backfill_bonus_and_split_flags():
+    frappe.db.sql("""
+        UPDATE `tabInvestment Portfolio` p
+        SET p.is_split = 1
+        WHERE ((p.split_from IS NOT NULL AND p.split_from != '')
+           OR (SELECT COUNT(*) FROM `tabInvestment Portfolio Split` sp WHERE sp.parent = p.name) > 0)
+          AND (p.is_split = 0 OR p.is_split IS NULL)
+    """)
+    frappe.db.sql("""
+        UPDATE `tabInvestment Portfolio`
+        SET is_bonus_applied = 1
+        WHERE (ratio > 0 OR bonus_date IS NOT NULL) AND (is_bonus_applied = 0 OR is_bonus_applied IS NULL)
+    """)
+    frappe.db.sql("""
+        UPDATE `tabInvestment Portfolio`
+        SET purchase_entry_price = CASE
+            WHEN ratio > 0 THEN ROUND(entry_price * (1.0 + ratio), 4)
+            ELSE entry_price
+        END
+        WHERE purchase_entry_price IS NULL OR purchase_entry_price = 0
+    """)
+    frappe.db.commit()
+    return "Done"
