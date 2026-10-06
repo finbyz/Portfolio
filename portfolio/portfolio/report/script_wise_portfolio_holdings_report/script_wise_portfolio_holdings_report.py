@@ -280,7 +280,39 @@ def get_all_raw_transactions(filters):
 		query_params["to_date"] = filters.get("to_date")
 		to_date_inward_cond = " AND p.posting_date <= %(to_date)s"
 		to_date_exit_cond = " AND s.exit_date <= %(to_date)s"
-		to_date_split_cond = " AND DATE(p.modified) <= %(to_date)s"
+		to_date_split_cond = " AND COALESCE((SELECT ca.posting_date FROM `tabInvestment Corporate Action` ca WHERE ca.split_from = p.name AND ca.entry_type = 'Split' AND ca.docstatus = 1 ORDER BY ca.posting_date DESC LIMIT 1), DATE(p.modified)) <= %(to_date)s"
+
+	# Query all submitted bonus corporate actions for matching portfolios
+	bonus_ca_records = []
+	try:
+		bonus_ca_records = frappe.db.sql(
+			f"""
+			SELECT
+				ca.name AS ca_name,
+				ca.posting_date AS ca_posting_date,
+				ref.investment_portfolio,
+				ref.bonus_qty,
+				ref.old_qty,
+				ref.new_qty,
+				ref.old_rate,
+				ref.new_rate
+			FROM `tabInvestment Corporate Action Reference` ref
+			INNER JOIN `tabInvestment Corporate Action` ca ON ca.name = ref.parent
+			INNER JOIN `tabInvestment Portfolio` p ON p.name = ref.investment_portfolio
+			WHERE ca.docstatus = 1
+				AND ca.entry_type = 'Bonus'
+				AND {where_clause}
+			ORDER BY ca.posting_date ASC, ca.creation ASC
+			""",
+			query_params,
+			as_dict=True,
+		)
+	except Exception:
+		pass
+
+	bonus_by_ip = {}
+	for b in bonus_ca_records:
+		bonus_by_ip.setdefault(b.get("investment_portfolio"), []).append(b)
 
 	# 1. Inward Purchases
 	inward_query = f"""
@@ -293,6 +325,7 @@ def get_all_raw_transactions(filters):
 			p.segment,
 			p.category,
 			p.entry_price AS entry_price,
+			p.purchase_entry_price AS purchase_entry_price,
 			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
 			p.qty AS in_qty,
 			p.entry_price AS in_rate,
@@ -305,7 +338,58 @@ def get_all_raw_transactions(filters):
 		WHERE {where_clause} {to_date_inward_cond}
 	"""
 	inwards = frappe.db.sql(inward_query, query_params, as_dict=True)
-	entries.extend(inwards)
+	for p in inwards:
+		ip_name = p.get("voucher_no")
+		ip_bonuses = bonus_by_ip.get(ip_name, [])
+
+		if ip_bonuses:
+			total_bonus_qty = sum(flt(b.get("bonus_qty")) for b in ip_bonuses)
+			total_current_qty = flt(p.get("in_qty"))
+			orig_qty = total_current_qty - total_bonus_qty
+			if orig_qty <= 0:
+				orig_qty = flt(ip_bonuses[0].get("old_qty")) or total_current_qty
+
+			purchase_rate = (
+				flt(p.get("purchase_entry_price"))
+				or flt(ip_bonuses[0].get("old_rate"))
+				or (flt(p.get("in_amount")) / orig_qty if orig_qty > 0 else flt(p.get("in_rate")))
+			)
+			orig_amount = orig_qty * purchase_rate
+
+			orig_row = dict(p)
+			orig_row["in_qty"] = orig_qty
+			orig_row["in_rate"] = purchase_rate
+			orig_row["in_amount"] = orig_amount
+			orig_row["cost_amount"] = orig_amount
+			entries.append(orig_row)
+
+			for b in ip_bonuses:
+				bonus_qty = flt(b.get("bonus_qty"))
+				if bonus_qty <= 0:
+					continue
+				bonus_date = b.get("ca_posting_date") or p.get("posting_date")
+				bonus_row = {
+					"voucher_no": p.get("voucher_no"),
+					"voucher_type": "Corporate Action",
+					"posting_date": bonus_date,
+					"script": p.get("script"),
+					"company": p.get("company"),
+					"segment": p.get("segment"),
+					"category": p.get("category"),
+					"entry_price": 0.0,
+					"cost_amount": 0.0,
+					"in_qty": bonus_qty,
+					"in_rate": 0.0,
+					"in_amount": 0.0,
+					"out_qty": 0.0,
+					"out_rate": 0.0,
+					"out_amount": 0.0,
+					"is_inward": 1,
+				}
+				entries.append(bonus_row)
+			continue
+
+		entries.append(p)
 
 	# 2. Outward Sales from tabInvestment Portfolio Segment
 	exit_query = f"""
@@ -318,7 +402,7 @@ def get_all_raw_transactions(filters):
 			p.segment,
 			p.category,
 			p.entry_price AS entry_price,
-			COALESCE(s.exit_qty * p.entry_price, 0.0) AS cost_amount,
+			0.0 AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
@@ -339,26 +423,38 @@ def get_all_raw_transactions(filters):
 		SELECT
 			p.name AS voucher_no,
 			'Portfolio Split' AS voucher_type,
-			DATE(p.modified) AS posting_date,
+			COALESCE(
+				(SELECT ca.posting_date FROM `tabInvestment Corporate Action` ca WHERE ca.split_from = p.name AND ca.entry_type = 'Split' AND ca.docstatus = 1 ORDER BY ca.posting_date DESC LIMIT 1),
+				DATE(p.modified)
+			) AS posting_date,
 			p.script,
 			p.company,
 			p.segment,
 			p.category,
 			p.entry_price AS entry_price,
-			COALESCE(p.entry_amount, p.qty * p.entry_price) AS cost_amount,
+			COALESCE(
+				(p.qty - COALESCE((SELECT SUM(seg.exit_qty) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name), 0.0)) * p.entry_price,
+				0.0
+			) AS cost_amount,
 			0.0 AS in_qty,
 			0.0 AS in_rate,
 			0.0 AS in_amount,
-			p.qty AS out_qty,
+			(p.qty - COALESCE((SELECT SUM(seg.exit_qty) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name), 0.0)) AS out_qty,
 			p.entry_price AS out_rate,
-			COALESCE(p.entry_amount, p.qty * p.entry_price) AS out_amount,
-			COALESCE(p.entry_amount, p.qty * p.entry_price) AS net_exit_amount,
+			COALESCE(
+				(p.qty - COALESCE((SELECT SUM(seg.exit_qty) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name), 0.0)) * p.entry_price,
+				0.0
+			) AS out_amount,
+			COALESCE(
+				(p.qty - COALESCE((SELECT SUM(seg.exit_qty) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name), 0.0)) * p.entry_price,
+				0.0
+			) AS net_exit_amount,
 			0 AS is_inward
 		FROM `tabInvestment Portfolio` p
 		WHERE {where_clause} {to_date_split_cond}
 			AND p.status = 'Exited'
 			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Split` sp WHERE sp.parent = p.name) > 0
-			AND (SELECT COUNT(*) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name) = 0
+			AND (p.qty - COALESCE((SELECT SUM(seg.exit_qty) FROM `tabInvestment Portfolio Segment` seg WHERE seg.parent = p.name), 0.0)) > 0.0001
 	"""
 	try:
 		splits = frappe.db.sql(split_query, query_params, as_dict=True)
@@ -425,7 +521,7 @@ def get_holding_portfolios_for_script(script, company=None):
 	filters = {
 		"script": script,
 		"docstatus": 1,
-		"status": "Holding",
+		"status": ["in", ["Holding", "Partially Exited"]],
 	}
 	if company:
 		filters["company"] = company
@@ -491,11 +587,12 @@ def execute_portfolio_split(portfolio, split_ratio, split_rows):
 
 	if doc.docstatus != 1:
 		frappe.throw(_("Document {0} must be submitted before Split").format(portfolio))
-	if doc.status != "Holding":
-		frappe.throw(_("Document {0} status must be Holding to Split (Current: {1})").format(portfolio, doc.status))
+	if doc.status not in ["Holding", "Partially Exited"]:
+		frappe.throw(_("Document {0} status must be Holding or Partially Exited to Split (Current: {1})").format(portfolio, doc.status))
 
-	# Update post split qty
-	doc.post_split_qty = flt(doc.qty) * split_ratio
+	# Update post split qty based on remaining pending_qty
+	base_qty = flt(doc.pending_qty) if flt(doc.pending_qty) > 0 else flt(doc.qty)
+	doc.post_split_qty = base_qty * split_ratio
 
 	# Populate child table investment_portfolio_split
 	doc.set("investment_portfolio_split", [])

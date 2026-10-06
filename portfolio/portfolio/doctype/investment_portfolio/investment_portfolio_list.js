@@ -79,7 +79,7 @@ function show_bonus_dialog(listview) {
 					{
 						fieldname: "date",
 						fieldtype: "Date",
-						label: __("Date"),
+						label: __("Record Date"),
 						default: frappe.datetime.get_today(),
 						reqd: 1,
 						onchange: function () {

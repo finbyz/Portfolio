@@ -70,16 +70,45 @@ frappe.ui.form.on('Investment Portfolio', {
 	},
 
 	post_split_qty: function(frm) {
+		let base_qty = (frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
+			? flt(frm.doc.pending_qty)
+			: flt(frm.doc.qty);
+		let post_split_qty = flt(frm.doc.post_split_qty);
+		if (post_split_qty > 0 && post_split_qty < base_qty) {
+			frappe.msgprint({
+				title: __("Validation"),
+				indicator: "orange",
+				message: __("<strong>Qty After Split ({0})</strong> cannot be less than Pending Qty (<strong>{1}</strong>).", [
+					format_number(post_split_qty, null, 4),
+					format_number(base_qty, null, 4)
+				])
+			});
+		}
 		render_split_summary(frm);
 	},
 
 	split: function(frm) {
+		let base_qty = (frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
+			? flt(frm.doc.pending_qty)
+			: flt(frm.doc.qty);
 		let post_split_qty = flt(frm.doc.post_split_qty);
 		if (!post_split_qty || post_split_qty <= 0) {
 			frappe.msgprint({
 				title: __("Validation"),
 				indicator: "red",
 				message: __("Please enter a valid <strong>Qty After Split</strong> first.")
+			});
+			return;
+		}
+
+		if (post_split_qty < base_qty) {
+			frappe.msgprint({
+				title: __("Validation"),
+				indicator: "red",
+				message: __("<strong>Qty After Split ({0})</strong> cannot be less than Pending Qty (<strong>{1}</strong>).", [
+					format_number(post_split_qty, null, 4),
+					format_number(base_qty, null, 4)
+				])
 			});
 			return;
 		}
@@ -94,9 +123,6 @@ frappe.ui.form.on('Investment Portfolio', {
 			return;
 		}
 
-		let base_qty = (frm.doc.pending_qty !== undefined && frm.doc.pending_qty !== null && flt(frm.doc.pending_qty) > 0)
-			? flt(frm.doc.pending_qty)
-			: flt(frm.doc.qty);
 		let target_amount = base_qty * flt(frm.doc.entry_price);
 		let total_split_amount = 0.0;
 		let total_split_qty = 0.0;

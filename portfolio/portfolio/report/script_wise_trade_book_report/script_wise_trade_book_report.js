@@ -75,26 +75,16 @@ frappe.query_reports["Script-Wise Trade Book Report"] = {
 		value = default_formatter(value, row, column, data);
 
 		if (column.fieldname === "transaction_type") {
-			if (value === "Purchase" || value === "Split In") {
+			if (value === "Purchase") {
 				value = `<span class="indicator-pill green">${value}</span>`;
-			} else if (value === "Exit / Sale" || value === "Split Out") {
+			} else if (value === "Split") {
+				value = `<span class="indicator-pill yellow" style="background-color: #fef9c3; color: #854d0e; font-weight: 500;">${value}</span>`;
+			} else if (value === "Sales" || value === "Exit / Sale") {
 				value = `<span class="indicator-pill orange">${value}</span>`;
 			} else if (value === "Opening") {
 				value = `<span class="indicator-pill blue">${value}</span>`;
-			}
-		}
-
-		if (column.fieldname === "split_bonus" || column.fieldname === "split") {
-			if (data && data.split_bonus) {
-				if (data.split_bonus === "Split In") {
-					value = `<span class="indicator-pill green">${__("Split In")}</span>`;
-				} else if (data.split_bonus === "Split Out") {
-					value = `<span class="indicator-pill orange">${__("Split Out")}</span>`;
-				} else if (data.split_bonus === "Bonus") {
-					value = `<span class="indicator-pill purple" style="background-color: #ede9fe; color: #6b21a8; font-weight: 500;">${__("Bonus")}</span>`;
-				} else if (data.split_bonus === "Split In / Bonus") {
-					value = `<span class="indicator-pill green">${__("Split In")}</span> <span class="indicator-pill purple" style="background-color: #ede9fe; color: #6b21a8; font-weight: 500;">${__("Bonus")}</span>`;
-				}
+			} else if (value === "Bonus") {
+				value = `<span class="indicator-pill purple" style="background-color: #ede9fe; color: #6b21a8; font-weight: 500;">${__("Bonus")}</span>`;
 			}
 		}
 
