@@ -459,11 +459,17 @@ def process_split(name):
     total_split_amount = 0
     total_split_qty = 0
     for row in doc.investment_portfolio_split:
-        if not row.script or not flt(row.qty) or not flt(row.per_share_price):
-            frappe.throw(_("Row {0}: Script, Qty and Per Share Price are mandatory").format(row.idx))
-        row.amount = flt(row.qty) * flt(row.per_share_price)
-        total_split_amount += row.amount
-        total_split_qty += flt(row.qty)
+        q = flt(row.qty)
+        p = flt(row.per_share_price)
+        a = flt(row.amount)
+        if not row.script or not q or (not p and not a):
+            frappe.throw(_("Row {0}: Script, Qty and Per Share Price / Amount are mandatory").format(row.idx))
+        if not a and p:
+            row.amount = q * p
+        elif a and not p:
+            row.per_share_price = a / q
+        total_split_amount += flt(row.amount)
+        total_split_qty += q
 
     if abs(flt(total_split_qty, 4) - flt(expected_qty, 4)) > 0.0001:
         frappe.throw(
@@ -524,12 +530,14 @@ def process_split(name):
         new_doc.company = doc.company
         new_doc.posting_date = nowdate()
         new_doc.qty = row.qty
-        new_doc.purchase_entry_price = row.per_share_price
-        new_doc.entry_price = row.per_share_price
+        rate = flt(row.per_share_price) if flt(row.per_share_price) else (flt(row.amount) / flt(row.qty))
+        amt = flt(row.amount) if flt(row.amount) else (flt(row.qty) * rate)
+        new_doc.purchase_entry_price = rate
+        new_doc.entry_price = rate
         new_doc.holding_account = doc.holding_account
         new_doc.funds_debited_from = doc.funds_debited_from
         new_doc.investment_charges_account = doc.investment_charges_account
-        new_doc.total_cost_of_ownership = row.amount
+        new_doc.total_cost_of_ownership = amt
         new_doc.is_existing = 1
         new_doc.jv_of_entry = doc.jv_of_entry
         new_doc.split_from = doc.name

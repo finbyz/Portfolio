@@ -128,17 +128,24 @@ frappe.ui.form.on('Investment Portfolio', {
 		let total_split_qty = 0.0;
 
 		for (let row of split_rows) {
-			if (!row.script || !flt(row.qty) || !flt(row.per_share_price)) {
+			let q = flt(row.qty);
+			let p = flt(row.per_share_price);
+			let a = flt(row.amount);
+			if (!row.script || !q || (!p && !a)) {
 				frappe.msgprint({
 					title: __("Validation"),
 					indicator: "red",
-					message: __("Row {0}: Script, Qty and Per Share Price are all required.", [row.idx])
+					message: __("Row {0}: Script, Qty and Per Share Price / Amount are required.", [row.idx])
 				});
 				return;
 			}
-			row.amount = flt(row.qty) * flt(row.per_share_price);
-			total_split_amount += row.amount;
-			total_split_qty += flt(row.qty);
+			if (!a && p) {
+				row.amount = q * p;
+			} else if (a && !p) {
+				row.per_share_price = a / q;
+			}
+			total_split_amount += flt(row.amount);
+			total_split_qty += q;
 		}
 
 		let currency = frm.doc.currency || "INR";
@@ -373,11 +380,36 @@ frappe.ui.form.on('Investment Portfolio', {
 
 frappe.ui.form.on('Investment Portfolio Split', {
     qty: function(frm, cdt, cdn) {
-        calculate_split_row_amount(frm, cdt, cdn);
+        let row = locals[cdt][cdn];
+        let q = flt(row.qty);
+        let p = flt(row.per_share_price);
+        let a = flt(row.amount);
+        if (p > 0) {
+            row.amount = q * p;
+        } else if (a > 0 && q > 0) {
+            row.per_share_price = a / q;
+        }
+        frm.refresh_field("investment_portfolio_split");
         render_split_summary(frm);
     },
     per_share_price: function(frm, cdt, cdn) {
-        calculate_split_row_amount(frm, cdt, cdn);
+        let row = locals[cdt][cdn];
+        let q = flt(row.qty);
+        let p = flt(row.per_share_price);
+        if (q > 0) {
+            row.amount = q * p;
+        }
+        frm.refresh_field("investment_portfolio_split");
+        render_split_summary(frm);
+    },
+    amount: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        let q = flt(row.qty);
+        let a = flt(row.amount);
+        if (q > 0) {
+            row.per_share_price = a / q;
+        }
+        frm.refresh_field("investment_portfolio_split");
         render_split_summary(frm);
     },
     investment_portfolio_split_remove: function(frm) {
@@ -390,8 +422,12 @@ frappe.ui.form.on('Investment Portfolio Split', {
 
 function calculate_split_row_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
-    row.amount = flt(row.qty) * flt(row.per_share_price);
-    frm.refresh_field("investment_portfolio_split");
+    let q = flt(row.qty);
+    let p = flt(row.per_share_price);
+    if (q > 0 && p > 0) {
+        row.amount = q * p;
+        frm.refresh_field("investment_portfolio_split");
+    }
 }
 
 function render_split_summary(frm) {
@@ -410,9 +446,16 @@ function render_split_summary(frm) {
     (frm.doc.investment_portfolio_split || []).forEach(row => {
         let q = flt(row.qty);
         let p = flt(row.per_share_price);
-        row.amount = q * p;
+        let a = flt(row.amount);
+        if (!a && p && q) {
+            row.amount = q * p;
+            a = row.amount;
+        } else if (a && !p && q) {
+            row.per_share_price = a / q;
+            p = row.per_share_price;
+        }
         total_split_qty += q;
-        total_split_amount += row.amount;
+        total_split_amount += flt(row.amount);
     });
 
     let diff_qty = post_split_qty - total_split_qty;
