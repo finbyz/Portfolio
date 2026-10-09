@@ -1,30 +1,45 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:category",
- "creation": "2023-05-18 10:38:22.985401",
- "default_view": "List",
+ "autoname": "field:script_name",
+ "creation": "2026-09-15 21:21:17.881746",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "category"
+  "script_code",
+  "script_name",
+  "column_break_xjik",
+  "benchmark"
  ],
  "fields": [
   {
-   "allow_in_quick_entry": 1,
-   "fieldname": "category",
+   "fieldname": "script_code",
    "fieldtype": "Data",
-   "label": "Category",
+   "label": "Script Code"
+  },
+  {
+   "fieldname": "column_break_xjik",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "script_name",
+   "fieldtype": "Data",
+   "label": "Script Name",
    "unique": 1
+  },
+  {
+   "fieldname": "benchmark",
+   "fieldtype": "Data",
+   "label": "Benchmark"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-19 10:17:47.040218",
+ "modified": "2026-09-21 15:24:53.380664",
  "modified_by": "Administrator",
  "module": "Portfolio",
- "name": "Category",
+ "name": "Script",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
@@ -41,7 +56,7 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

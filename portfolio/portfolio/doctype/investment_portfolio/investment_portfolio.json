@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "naming_series:",
- "creation": "2023-05-18 10:31:45.213227",
+ "creation": "2026-09-24 15:05:39.811867",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -13,14 +13,21 @@
   "category",
   "script",
   "currency",
+  "bonus_date",
   "column_break_jpb1w",
   "status",
   "posting_date",
   "company",
   "is_existing",
+  "is_bonus_applied",
+  "is_split",
   "jv_of_entry",
+  "split_from",
+  "split__investment_portfolio",
   "entry_section_section",
   "qty",
+  "old_qty",
+  "purchase_entry_price",
   "entry_price",
   "entry_amount",
   "set_entry_charges_manually",
@@ -30,6 +37,15 @@
   "funds_debited_from",
   "holding_account",
   "investment_charges_account",
+  "ratio",
+  "post_bonus_qty",
+  "portfolio_split_section",
+  "post_split_qty",
+  "column_break_kgvz",
+  "split",
+  "section_break_ugcl",
+  "investment_portfolio_split",
+  "split_summary_html",
   "exit_section_section",
   "exit_qty",
   "exit_price",
@@ -45,8 +61,9 @@
   "create_exit_jv",
   "account_section_section",
   "investment_portfolio_segment",
+  "amended_from",
   "pending_qty",
-  "amended_from"
+  "old_pending_qty"
  ],
  "fields": [
   {
@@ -74,10 +91,11 @@
   },
   {
    "fieldname": "script",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Script ",
+   "options": "Script",
    "reqd": 1
   },
   {
@@ -97,12 +115,12 @@
    "columns": 1,
    "fieldname": "status",
    "fieldtype": "Select",
+   "hidden": 1,
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Draft\nHolding\nPartially Exited\nExited\nCancelled"
   },
   {
-   "bold": 1,
    "columns": 1,
    "fieldname": "posting_date",
    "fieldtype": "Date",
@@ -127,6 +145,22 @@
    "label": "Is Existing"
   },
   {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_bonus_applied",
+   "fieldtype": "Check",
+   "label": "Bonus Applied",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_split",
+   "fieldtype": "Check",
+   "label": "Is Split",
+   "read_only": 1
+  },
+  {
    "fieldname": "entry_section_section",
    "fieldtype": "Section Break",
    "label": "Entry Section",
@@ -142,6 +176,16 @@
    "precision": "4",
    "read_only_depends_on": "eval:doc.docstatus == 1;",
    "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 1,
+   "fieldname": "purchase_entry_price",
+   "fieldtype": "Currency",
+   "label": "Purchase Entry Price",
+   "options": "currency",
+   "precision": "4",
+   "read_only_depends_on": "eval:doc.docstatus == 1;"
   },
   {
    "allow_on_submit": 1,
@@ -271,14 +315,14 @@
   {
    "allow_on_submit": 1,
    "fieldname": "exit_amount",
-   "fieldtype": "Currency",
+   "fieldtype": "Float",
    "label": "Exit Amount",
    "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "net_exit_amount",
-   "fieldtype": "Currency",
+   "fieldtype": "Float",
    "label": "Net Exit Amount"
   },
   {
@@ -343,11 +387,99 @@
    "fieldname": "set_entry_charges_manually",
    "fieldtype": "Check",
    "label": "Set Entry Charges Manually"
+  },
+  {
+   "fieldname": "bonus_date",
+   "fieldtype": "Date",
+   "in_filter": 1,
+   "label": "Bonus Date"
+  },
+  {
+   "fieldname": "split_from",
+   "fieldtype": "Link",
+   "label": "Split From",
+   "options": "Investment Portfolio",
+   "read_only": 1
+  },
+  {
+   "fieldname": "old_qty",
+   "fieldtype": "Float",
+   "label": "Old Qty",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "old_pending_qty",
+   "fieldtype": "Float",
+   "label": "Old Pending Qty",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "split__investment_portfolio",
+   "fieldtype": "Link",
+   "label": "Split Investment Portfolio",
+   "options": "Investment Portfolio",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "ratio",
+   "fieldtype": "Float",
+   "in_filter": 1,
+   "label": "Bonus Ratio",
+   "precision": "4"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "post_bonus_qty",
+   "fieldtype": "Float",
+   "label": "Qty After Bonus",
+   "precision": "4",
+   "read_only": 1
+  },
+  {
+   "fieldname": "portfolio_split_section",
+   "fieldtype": "Section Break",
+   "label": "Portfolio Split"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "post_split_qty",
+   "fieldtype": "Float",
+   "label": "Qty After Split",
+   "precision": "4"
+  },
+  {
+   "fieldname": "column_break_kgvz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.docstatus==1 ",
+   "fieldname": "split",
+   "fieldtype": "Button",
+   "label": "Split"
+  },
+  {
+   "fieldname": "section_break_ugcl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "investment_portfolio_split",
+   "fieldtype": "Table",
+   "label": "Investment Portfolio Split",
+   "options": "Investment Portfolio Split"
+  },
+  {
+   "fieldname": "split_summary_html",
+   "fieldtype": "HTML",
+   "label": "Split Summary"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-11 11:29:43.698209",
+ "modified": "2026-09-24 15:42:13.593830",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Investment Portfolio",
@@ -400,6 +532,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
