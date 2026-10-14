@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2026-10-13 12:40:46.897781",
+ "modified": "2026-10-14 11:08:29.441047",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Script-Wise Portfolio Holdings Report",
@@ -21,10 +21,10 @@
  "report_type": "Script Report",
  "roles": [
   {
-   "role": "System Manager"
+   "role": "Accounts Manager"
   },
   {
-   "role": "Accounts Manager"
+   "role": "System Manager"
   }
  ],
  "timeout": 0

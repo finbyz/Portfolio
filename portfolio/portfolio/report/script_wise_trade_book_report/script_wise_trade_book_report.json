@@ -10,7 +10,7 @@
  "idx": 0,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2026-10-13 12:40:41.870718",
+ "modified": "2026-10-14 11:12:13.902053",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Script-Wise Trade Book Report",
@@ -22,10 +22,10 @@
  "report_type": "Script Report",
  "roles": [
   {
-   "role": "System Manager"
+   "role": "Accounts Manager"
   },
   {
-   "role": "Accounts Manager"
+   "role": "Sales Manager"
   }
  ],
  "timeout": 0
