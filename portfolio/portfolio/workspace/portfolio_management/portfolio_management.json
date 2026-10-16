@@ -84,17 +84,16 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Script-Wise Trade Book Report",
    "link_count": 0,
    "link_to": "Script-Wise Trade Book Report",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Investment Portfolio",
    "type": "Link"
   }
  ],
- "modified": "2026-10-15 16:05:16.560571",
+ "modified": "2026-10-16 09:50:52.650201",
  "modified_by": "Administrator",
  "module": "Portfolio",
  "name": "Portfolio Management",
