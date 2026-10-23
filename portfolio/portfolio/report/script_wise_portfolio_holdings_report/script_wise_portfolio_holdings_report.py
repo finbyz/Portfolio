@@ -4,7 +4,7 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 import erpnext
 
 
@@ -20,7 +20,7 @@ def execute(filters=None):
 
 def get_columns(filters):
 	currency = get_company_currency(filters.get("company"))
-	return [
+	columns = [
 		{
 			"label": _("Company"),
 			"fieldname": "company",
@@ -34,12 +34,6 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"options": "Script",
 			"width": 140,
-		},
-		{
-			"label": _("Script Name"),
-			"fieldname": "script_name",
-			"fieldtype": "Data",
-			"width": 160,
 		},
 		{
 			"label": _("Segment"),
@@ -56,14 +50,14 @@ def get_columns(filters):
 			"width": 120,
 		},
 		{
-			"label": _("Balance Qty"),
+			"label": _("Quantity"),
 			"fieldname": "bal_qty",
 			"fieldtype": "Float",
 			"precision": 4,
 			"width": 120,
 		},
 		{
-			"label": _("Valuation / Avg Rate"),
+			"label": _("Average Price"),
 			"fieldname": "bal_rate",
 			"fieldtype": "Currency",
 			"options": "currency",
@@ -71,20 +65,41 @@ def get_columns(filters):
 			"width": 150,
 		},
 		{
-			"label": _("Balance Value"),
+			"label": _("Invested Value"),
 			"fieldname": "bal_val",
 			"fieldtype": "Currency",
 			"options": "currency",
 			"width": 160,
 		},
-		{
-			"label": _("Currency"),
-			"fieldname": "currency",
-			"fieldtype": "Link",
-			"options": "Currency",
-			"hidden": 1,
-		},
 	]
+
+	if cint(filters.get("show_entry_charges")):
+		columns.extend([
+			{
+				"label": _("Entry Charges"),
+				"fieldname": "entry_charges",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"width": 140,
+			},
+			{
+				"label": _("Investment Value Including Charges"),
+				"fieldname": "investment_value_inc_charges",
+				"fieldtype": "Currency",
+				"options": "currency",
+				"width": 200,
+			},
+		])
+
+	columns.append({
+		"label": _("Currency"),
+		"fieldname": "currency",
+		"fieldtype": "Link",
+		"options": "Currency",
+		"hidden": 1,
+	})
+
+	return columns
 
 
 def get_data(filters):
@@ -94,6 +109,7 @@ def get_data(filters):
 
 	all_raw_entries = get_all_raw_transactions(filters)
 	script_names_map = get_script_names_map()
+	by_company_script, by_script = get_entry_charges_map(filters)
 
 	# Combine data based on Script (and company)
 	grouped_entries = {}
@@ -190,6 +206,16 @@ def get_data(filters):
 
 		row_currency = get_company_currency(comp) if comp else company_currency
 
+		# Calculate entry charges for this script (IP status in 'Holding', 'Partially Exited')
+		if (comp, scrip) in by_company_script:
+			entry_charges = by_company_script[(comp, scrip)]
+		elif not comp and scrip in by_script:
+			entry_charges = by_script[scrip]
+		else:
+			entry_charges = 0.0
+
+		investment_value_inc_charges = flt(bal_val) + flt(entry_charges)
+
 		row = {
 			"script": scrip,
 			"script_name": script_names_map.get(scrip, scrip),
@@ -200,6 +226,8 @@ def get_data(filters):
 			"bal_qty": bal_qty,
 			"bal_rate": bal_rate,
 			"bal_val": bal_val,
+			"entry_charges": entry_charges,
+			"investment_value_inc_charges": investment_value_inc_charges,
 			"active_holdings": len(meta.get("active_holdings", [])),
 			"currency": row_currency,
 		}
@@ -246,6 +274,72 @@ def get_data(filters):
 	]
 
 	return data, report_summary
+
+
+def get_entry_charges_map(filters):
+	conditions = [
+		"p.docstatus = 1",
+		"p.status IN ('Holding', 'Partially Exited')",
+	]
+	query_params = {}
+
+	if filters.get("company"):
+		conditions.append("p.company = %(company)s")
+		query_params["company"] = filters.get("company")
+
+	if filters.get("script"):
+		conditions.append("p.script = %(script)s")
+		query_params["script"] = filters.get("script")
+
+	if filters.get("segment"):
+		conditions.append("p.segment = %(segment)s")
+		query_params["segment"] = filters.get("segment")
+
+	if filters.get("category"):
+		conditions.append("p.category = %(category)s")
+		query_params["category"] = filters.get("category")
+
+	if filters.get("to_date"):
+		conditions.append("p.posting_date <= %(to_date)s")
+		query_params["to_date"] = filters.get("to_date")
+
+	where_clause = " AND ".join(conditions)
+
+	records = frappe.db.sql(
+		f"""
+		SELECT
+			p.company,
+			p.script,
+			p.status,
+			p.entry_charges,
+			p.qty,
+			p.pending_qty
+		FROM `tabInvestment Portfolio` p
+		WHERE {where_clause}
+		""",
+		query_params,
+		as_dict=True,
+	)
+
+	by_company_script = {}
+	by_script = {}
+	for r in records:
+		entry_charges = flt(r.entry_charges)
+		qty = flt(r.qty)
+		pending_qty = flt(r.pending_qty)
+		status = (r.status or "").strip()
+
+		if ("Partially" in status or status in ("Partially Exited", "Partially Exit")) and qty:
+			amount = entry_charges / qty
+			c_val = amount * pending_qty
+		else:
+			c_val = entry_charges
+
+		key = (r.company or "", r.script)
+		by_company_script[key] = by_company_script.get(key, 0.0) + c_val
+		by_script[r.script] = by_script.get(r.script, 0.0) + c_val
+
+	return by_company_script, by_script
 
 
 def get_all_raw_transactions(filters):

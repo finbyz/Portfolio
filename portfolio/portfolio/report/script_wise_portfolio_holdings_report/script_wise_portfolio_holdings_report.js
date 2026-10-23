@@ -54,6 +54,12 @@ frappe.query_reports["Script-Wise Portfolio Holdings Report"] = {
 			"label": __("Show Zero Balance"),
 			"fieldtype": "Check",
 			"default": 0
+		},
+		{
+			"fieldname": "show_entry_charges",
+			"label": __("Show Entry Charges"),
+			"fieldtype": "Check",
+			"default": 0
 		}
 	],
 
@@ -89,6 +95,10 @@ frappe.query_reports["Script-Wise Portfolio Holdings Report"] = {
 		}
 
 		if (column.fieldname === "bal_val" && data && data.bal_val > 0) {
+			value = `<strong>${value}</strong>`;
+		}
+
+		if (column.fieldname === "investment_value_inc_charges" && data && data.investment_value_inc_charges > 0) {
 			value = `<strong>${value}</strong>`;
 		}
 

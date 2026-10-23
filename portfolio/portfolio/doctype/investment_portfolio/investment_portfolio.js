@@ -42,31 +42,36 @@ frappe.ui.form.on('Investment Portfolio', {
 		}
 	},
 	cal_exit_charges:function(frm){
-		let net=flt(frm.doc.exit_amount - frm.doc.net_exit_amount)
-		frm.set_value("exit_charges",net)
-		frm.refresh_field('exit_charges')
-
+		if (frm.doc.set_charges == 1) {
+			let net = flt(flt(frm.doc.exit_amount) - flt(frm.doc.net_exit_amount), 2);
+			if (net < 0) {
+				net = 0;
+			}
+			frm.set_value("exit_charges", net);
+			frm.refresh_field('exit_charges');
+		} else {
+			frm.set_value("exit_charges", 0);
+		}
 	},
 	set_charges:function(frm){
 		if(frm.doc.set_charges==1){
-			frm.trigger("cal_exit_charges")
+			frm.trigger("cal_exit_charges");
+		} else {
+			frm.set_value("exit_charges", 0);
+			frm.set_value("net_exit_amount", frm.doc.exit_amount);
 		}
 	},
 	exit_price:function(frm){
-		if(frm.doc.exit_price ){
-			frm.trigger("cal_exit_charges")
+		if(frm.doc.exit_qty){
+			frm.trigger("total_values");
 		}
-		if(frm.doc.entry_price){
-		frm.trigger("total_values")
-		frm.trigger('cal_exit_charges')
-		}
+		frm.trigger('cal_exit_charges');
 	},
 	exit_qty:function(frm){
-		if(frm.doc.exit_price ){
-			frm.trigger("cal_exit_charges")
+		if(frm.doc.exit_price){
+			frm.trigger("total_values");
 		}
-		if(frm.doc.exit_qty){
-			frm.trigger("total_values")}
+		frm.trigger('cal_exit_charges');
 	},
 
 	post_split_qty: function(frm) {
@@ -217,6 +222,13 @@ frappe.ui.form.on('Investment Portfolio', {
 		}
 		if(frm.doc.is_existing == 1 && frm.doc.docstatus == 0 ) {
 			frm.set_df_property('jv_of_entry', 'read_only', 0);
+			frm.set_query('jv_of_entry', function(doc) {
+				return {
+					filters: {
+						"docstatus": 1
+					}
+				};
+			});
 		}
 		// else if(frm.doc.docstatus==1){
 		// 	frm.set_df_property('qty', 'read_only', 1);
@@ -245,6 +257,33 @@ frappe.ui.form.on('Investment Portfolio', {
 			});
 		} else {
 			frm.set_df_property('jv_of_entry', 'read_only', 1);
+		}
+	},
+	jv_of_entry: function(frm) {
+		if (frm.doc.jv_of_entry && !frm.doc.is_split && !frm.doc.split_from) {
+			frappe.db.get_list('Investment Portfolio', {
+				filters: {
+					'jv_of_entry': frm.doc.jv_of_entry,
+					'name': ['!=', frm.doc.name],
+					'docstatus': ['!=', 2]
+				},
+				fields: ['name']
+			}).then(records => {
+				if (records && records.length) {
+					let ips = records.map(r => r.name).join(', ');
+					frappe.msgprint({
+						title: __('Validation'),
+						indicator: 'red',
+						message: __('Journal Entry <b>{0}</b> is already used in Investment Portfolio <b>{1}</b>. You cannot use it again.', [frm.doc.jv_of_entry, ips])
+					});
+					frm.set_value('jv_of_entry', '');
+				}
+			});
+		}
+	},
+	is_split: function(frm) {
+		if (!frm.doc.is_split && frm.doc.jv_of_entry) {
+			frm.trigger('jv_of_entry');
 		}
 	},
 	refresh:function(frm){
@@ -328,21 +367,28 @@ frappe.ui.form.on('Investment Portfolio', {
 		}
 	},
 	net_exit_amount:function(frm){
-		frm.trigger("cal_exit_charges")
+		if (frm.doc.set_charges == 1) {
+			frm.trigger("cal_exit_charges");
+		}
 	},
 	exit_charges:function(frm) {
 		if (frm.doc.set_charges==1) {
-			frm.set_value('net_exit_amount', frm.doc.exit_amount - frm.doc.exit_charges);
+			frm.set_value('net_exit_amount', flt(flt(frm.doc.exit_amount) - flt(frm.doc.exit_charges), 2));
 		}
 	},
 	total_values:function(frm){
-		let total_prices=frm.doc.exit_qty*frm.doc.exit_price;
-	
-		cur_frm.set_value("exit_amount",total_prices);
-		cur_frm.set_value("net_exit_amount",total_prices)
-		},
+		let total_prices = flt(flt(frm.doc.exit_qty) * flt(frm.doc.exit_price), 2);
 
-	
+		cur_frm.set_value("exit_amount", total_prices);
+		if (!frm.doc.set_charges || !frm.doc.exit_charges) {
+			cur_frm.set_value("net_exit_amount", total_prices);
+			cur_frm.set_value("exit_charges", 0);
+		} else {
+			cur_frm.set_value("net_exit_amount", flt(total_prices - flt(frm.doc.exit_charges), 2));
+		}
+	},
+
+
 	entry_amount:function(frm){
 		frm.trigger("cal_entry_charges")
 	},
@@ -360,21 +406,21 @@ frappe.ui.form.on('Investment Portfolio', {
 		}
 		frappe.call({
 			method: "portfolio.portfolio.doctype.investment_portfolio.investment_portfolio.create_exit",
-            args: {
-                    "exit_price": frm.doc.exit_price,
-					"exit_qty": frm.doc.exit_qty,
-					"exit_date": frm.doc.exit_date,
-					"exit_amount": frm.doc.exit_amount,
-					"net_exit_amount": frm.doc.net_exit_amount,
-					"jv_of_exit":frm.doc.jv_of_exit,
-					"name":frm.doc.name
-                },
-				callback: function (r) {
-					cur_frm.refresh_field('investment_portfolio_segment');
-					frappe.ui.toolbar.clear_cache();
-				}
-			});
-		}
+			args: {
+				"exit_price": frm.doc.exit_price,
+				"exit_qty": frm.doc.exit_qty,
+				"exit_date": frm.doc.exit_date,
+				"exit_amount": frm.doc.exit_amount,
+				"net_exit_amount": frm.doc.net_exit_amount,
+				"jv_of_exit":frm.doc.jv_of_exit,
+				"name":frm.doc.name
+			},
+			callback: function (r) {
+				frm.reload_doc();
+				frappe.ui.toolbar.clear_cache();
+			}
+		});
+	}
 });
 
 
