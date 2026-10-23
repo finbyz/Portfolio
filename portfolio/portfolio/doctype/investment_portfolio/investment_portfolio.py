@@ -31,6 +31,27 @@ class InvestmentPortfolio(Document):
 					flt(self.post_split_qty, 4), flt(base_qty, 4)
 				)
 			)
+
+		self.validate_jv_of_entry()
+
+	def validate_jv_of_entry(self):
+		if self.jv_of_entry and not self.is_split and not self.split_from:
+			existing_ips = frappe.get_all(
+				"Investment Portfolio",
+				filters={
+					"jv_of_entry": self.jv_of_entry,
+					"name": ("!=", self.name),
+					"docstatus": ("!=", 2),
+				},
+				pluck="name",
+			)
+			if existing_ips:
+				ips_str = ", ".join(frappe.bold(ip) for ip in existing_ips)
+				frappe.throw(
+					_("Journal Entry {0} is already used in Investment Portfolio {1}. You cannot use it again.").format(
+						frappe.bold(self.jv_of_entry), ips_str
+					)
+				)
 		
 	def on_update_after_submit(self):
 		self.calculate_pending_qty()
@@ -96,54 +117,65 @@ class InvestmentPortfolio(Document):
 			self.create_row_entry_jv()
 		
 	def calculate_entry_amount(self):
-		self.entry_amount=self.qty*self.entry_price
-	
+		self.entry_amount = flt(flt(self.qty) * flt(self.entry_price), 2)
+
 	def calculate_exit_amount(self):
-		self.exit_amount=self.exit_price*self.exit_qty
-		
+		self.exit_amount = flt(flt(self.exit_price) * flt(self.exit_qty), 2)
+		if not self.set_charges:
+			self.net_exit_amount = self.exit_amount
+			self.exit_charges = 0.0
+
 	def validate_exit_date(self):
 		if self.posting_date > self.exit_date:
-			frappe.throw("Exit Date Cannot be Greater than Investment Date")	
-	
+			frappe.throw("Exit Date Cannot be Greater than Investment Date")
+
 	def create_row_exit_jv(self):
 		if not self.bank_account:
 			frappe.throw("Bank Account is compulsory")
-		if self.net_exit_amount > self.exit_amount:
+		if flt(self.net_exit_amount, 2) > flt(self.exit_amount, 2):
 			frappe.throw("Net Exit Amount Should not be Greater than Exit Amount")
-		
+
 		cost_center = erpnext.get_default_cost_center(self.company)
-		if not self.set_charges==1:
+		net_exit_amount = flt(self.net_exit_amount, 2)
+		exit_amount = flt(self.exit_amount, 2)
+		cost_amount = flt(flt(self.exit_qty) * flt(self.entry_price), 2)
+		net = flt(net_exit_amount - cost_amount, 2)
+
+		if not self.set_charges == 1:
 			jv = frappe.new_doc("Journal Entry")
 			jv.voucher_type = "Journal Entry"
 			jv.posting_date = self.exit_date
-			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
 			if not self.company:
 				self.db_set('company', frappe.defaults.get_global_default('company'))
 
 			jv.company = self.company
 
-			
 			jv.append('accounts', {
 				'account': self.bank_account,
-				'debit_in_account_currency': self.net_exit_amount,
-				'cost_center':cost_center,
+				'debit_in_account_currency': net_exit_amount,
+				'cost_center': cost_center,
 			})
 
 			jv.append('accounts', {
 				'account': self.holding_account,
-				'credit_in_account_currency': (self.exit_qty*self.entry_price),
-				'cost_center':cost_center,
+				'credit_in_account_currency': cost_amount,
+				'cost_center': cost_center,
 			})
-			if net != 0:
+			if net > 0:
 				jv.append('accounts', {
 					'account': self.funds_credited_to,
 					'credit_in_account_currency': net,
-					'cost_center':cost_center,
+					'cost_center': cost_center,
+				})
+			elif net < 0:
+				jv.append('accounts', {
+					'account': self.funds_credited_to,
+					'debit_in_account_currency': abs(net),
+					'cost_center': cost_center,
 				})
 
 			jv.cheque_no = self.name
 			jv.cheque_date = self.exit_date
-			
 
 			try:
 				jv.save()
@@ -153,89 +185,88 @@ class InvestmentPortfolio(Document):
 				frappe.msgprint(_("Journal Entry - <a href='{url}'>{doc}</a> has been created.".format(url=url, doc=frappe.bold(jv.name))))
 				return jv.name
 			except Exception as e:
-				frappe.throw(_(str(e)))	
+				frappe.throw(_(str(e)))
 		else:
 			jv = frappe.new_doc("Journal Entry")
 			jv.voucher_type = "Journal Entry"
 			jv.posting_date = self.exit_date
-			net= (self.net_exit_amount - (self.exit_qty*self.entry_price))
 			if not self.company:
 				self.db_set('company', frappe.defaults.get_global_default('company'))
 
 			jv.company = self.company
-			calculated_exit_amount=self.exit_qty*self.entry_price
-			if self.exit_amount > calculated_exit_amount:
+			calculated_exit_amount = cost_amount
+			exit_charges = flt(self.exit_charges, 2)
+			if exit_amount > calculated_exit_amount:
 				jv.append('accounts', {
 					'account': self.bank_account,
-					'debit_in_account_currency': self.net_exit_amount,
-					'cost_center':cost_center,
+					'debit_in_account_currency': net_exit_amount,
+					'cost_center': cost_center,
 				})
-				jv.append('accounts', {
-					'account': self.investment_charges_account,
-					'debit_in_account_currency': self.exit_charges,
-					'cost_center':cost_center,
-				})
+				if exit_charges > 0:
+					jv.append('accounts', {
+						'account': self.investment_charges_account,
+						'debit_in_account_currency': exit_charges,
+						'cost_center': cost_center,
+					})
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_qty*self.entry_price),
-					'cost_center':cost_center,
+					'credit_in_account_currency': calculated_exit_amount,
+					'cost_center': cost_center,
 				})
-				jv.append('accounts', {
-					'account': self.funds_credited_to,
-					'credit_in_account_currency': (self.exit_amount-calculated_exit_amount),
-					'cost_center':cost_center,
-				})
-			elif  self.exit_amount < calculated_exit_amount:
+				gain = flt(exit_amount - calculated_exit_amount, 2)
+				if gain > 0:
+					jv.append('accounts', {
+						'account': self.funds_credited_to,
+						'credit_in_account_currency': gain,
+						'cost_center': cost_center,
+					})
+			elif exit_amount < calculated_exit_amount:
 				jv.append('accounts', {
 					'account': self.bank_account,
-					'debit_in_account_currency': self.net_exit_amount,
-					'cost_center':cost_center,
+					'debit_in_account_currency': net_exit_amount,
+					'cost_center': cost_center,
 				})
-				jv.append('accounts', {
-					'account': self.investment_charges_account,
-					'debit_in_account_currency': self.exit_charges,
-					'cost_center':cost_center,
-				})
-				exit_amount_with_charges=self.net_exit_amount+ self.exit_charges
-				jv.append('accounts', {
-					'account': self.funds_credited_to,
-					'debit_in_account_currency': (calculated_exit_amount-exit_amount_with_charges),
-					'cost_center':cost_center,
-				})
+				if exit_charges > 0:
+					jv.append('accounts', {
+						'account': self.investment_charges_account,
+						'debit_in_account_currency': exit_charges,
+						'cost_center': cost_center,
+					})
+				loss = flt(calculated_exit_amount - exit_amount, 2)
+				if loss > 0:
+					jv.append('accounts', {
+						'account': self.funds_credited_to,
+						'debit_in_account_currency': loss,
+						'cost_center': cost_center,
+					})
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_qty*self.entry_price),
-					'cost_center':cost_center,
+					'credit_in_account_currency': calculated_exit_amount,
+					'cost_center': cost_center,
 				})
-			elif self.exit_amount == calculated_exit_amount:
+			else:
 				jv.append('accounts', {
 					'account': self.bank_account,
-					'debit_in_account_currency': self.net_exit_amount,
-					'cost_center':cost_center,
+					'debit_in_account_currency': net_exit_amount,
+					'cost_center': cost_center,
 				})
-				jv.append('accounts', {
-					'account': self.investment_charges_account,
-					'debit_in_account_currency': self.exit_charges,
-					'cost_center':cost_center,
-				})
-				# v=self.net_exit_amount+ self.exit_charges
-				# jv.append('accounts', {
-				# 	'account': self.funds_credited_to,
-				# 	'debit_in_account_currency': (calculated_exit_amount-v)
-				# })
+				if exit_charges > 0:
+					jv.append('accounts', {
+						'account': self.investment_charges_account,
+						'debit_in_account_currency': exit_charges,
+						'cost_center': cost_center,
+					})
 
 				jv.append('accounts', {
 					'account': self.holding_account,
-					'credit_in_account_currency': (self.exit_amount),
-					'cost_center':cost_center,
+					'credit_in_account_currency': exit_amount,
+					'cost_center': cost_center,
 				})
-
 
 			jv.cheque_no = self.name
 			jv.cheque_date = self.exit_date
-			
 
 			try:
 				jv.save()
@@ -320,19 +351,43 @@ class InvestmentPortfolio(Document):
 					jv_doc.cancel()
 
 @frappe.whitelist()
-def create_exit(exit_price ,exit_qty , exit_date , exit_amount ,net_exit_amount , name ,jv_of_exit = None):
-	doc = frappe.get_doc("Investment Portfolio" , name)
+def create_exit(exit_price, exit_qty, exit_date, exit_amount, net_exit_amount, name, jv_of_exit=None):
+	doc = frappe.get_doc("Investment Portfolio", name)
+	if exit_price:
+		doc.exit_price = flt(exit_price)
+	if exit_qty:
+		doc.exit_qty = flt(exit_qty)
+	if exit_date:
+		doc.exit_date = exit_date
 	doc.calculate_exit_amount()
+	if net_exit_amount is not None and doc.set_charges == 1:
+		doc.net_exit_amount = flt(net_exit_amount, 2)
+	else:
+		doc.net_exit_amount = doc.exit_amount
+		doc.exit_charges = 0.0
+
 	jv = doc.create_row_exit_jv()
-	doc.append("investment_portfolio_segment" , {"exit_price":exit_price,"exit_date":exit_date ,"exit_qty":exit_qty , "exit_amount":exit_amount , "net_exit_amount" : net_exit_amount,"jv_of_exit": jv})
+	doc.append(
+		"investment_portfolio_segment",
+		{
+			"exit_price": doc.exit_price,
+			"exit_date": doc.exit_date,
+			"exit_qty": doc.exit_qty,
+			"exit_amount": doc.exit_amount,
+			"net_exit_amount": doc.net_exit_amount,
+			"jv_of_exit": jv,
+		},
+	)
 	if sum([flt(row.exit_qty) for row in doc.investment_portfolio_segment]) > flt(doc.qty):
 		frappe.throw("Exit Quantity should not be greater than quantity")
 	doc.calculate_pending_qty()
-	doc.exit_price=0
-	doc.exit_qty=0
-	doc.exit_amount=0
-	doc.net_exit_amount=0
-	doc.save()	
+	doc.exit_price = 0
+	doc.exit_qty = 0
+	doc.exit_amount = 0
+	doc.net_exit_amount = 0
+	doc.exit_charges = 0
+	doc.save()
+	return jv	
  
 @frappe.whitelist()
 def get_bonus_scripts():
@@ -594,5 +649,5 @@ def backfill_bonus_and_split_flags():
         END
         WHERE purchase_entry_price IS NULL OR purchase_entry_price = 0
     """)
-    frappe.db.commit()
+    
     return "Done"
